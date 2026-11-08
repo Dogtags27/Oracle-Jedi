@@ -2,7 +2,7 @@
 
 **Maple Street Tax is fictional.** Its site says so in a banner and footer, and every phone number is in the reserved fictional range `555-01xx`. Never copy a real firm's name, logo or text, and never send the training sample to anyone but your own test inbox.
 
-Commands are for **Windows PowerShell**, run from the repo root (`Oracle-Jedi\`).
+Command/s are for **Windows PowerShell**, run from the repo root (`Oracle-Jedi\`).
 
 **What you will end up with**
 
