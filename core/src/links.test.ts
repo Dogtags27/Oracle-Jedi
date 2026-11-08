@@ -52,7 +52,7 @@ describe("link guard (on-device, before the click)", () => {
       "Maple Street Tax <alerts@maple-street-taxdocs.co>",
     );
     expect(x.isCredentialRequest).toBe(true);
-    expect(x.credentialAsks).toEqual(expect.arrayContaining(["Account verification", "Login code"]));
+    expect(x.credentialAsks).toEqual(expect.arrayContaining(["account_verification", "login_code"]));
     expect(extractRequest("Thanks, I reset my password yesterday.", "Sam <sam@example.com>").isCredentialRequest).toBe(false);
   });
 });

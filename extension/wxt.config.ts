@@ -24,28 +24,29 @@ export default defineConfig({
   vite: () => ({ plugins: [tailwindcss()], envDir: "..", envPrefix: ["WXT_", "VITE_"] }),
   manifest: {
     name: "Avaran",
-    description: "Privacy layer for your browser: check who's asking, seal documents, hide chats when screen sharing, stop deceptive buttons.",
+    description: "__MSG_extDescription__",
+    default_locale: "en",
     permissions: ["storage", "sidePanel", "contextMenus", "scripting", "activeTab"],
     host_permissions: ["https://mail.google.com/*", "https://web.whatsapp.com/*", `${apiOrigin}/*`, `${dohOrigin}/*`],
     optional_host_permissions: ["<all_urls>"],
     commands: {
       "sheathe-toggle": {
         suggested_key: { default: "Ctrl+Shift+9" },
-        description: "Sheathe on/off (works even while Zoom or Teams has focus)",
+        description: "__MSG_cmdSheatheToggle__",
         global: true,
       },
       "sheathe-panic": {
         suggested_key: { default: "Ctrl+Shift+0" },
-        description: "Panic: blur every chat and inbox now",
+        description: "__MSG_cmdSheathePanic__",
         global: true,
       },
       "sheathe-tab": {
         suggested_key: { default: "Alt+Shift+S" },
-        description: "Sheathe this page: blur personal info on any site",
+        description: "__MSG_cmdSheatheTab__",
       },
       "guard-page": {
         suggested_key: { default: "Alt+Shift+G" },
-        description: "Click Guard: check this page for deceptive buttons",
+        description: "__MSG_cmdGuardPage__",
       },
     },
     action: { default_title: "Avaran" },

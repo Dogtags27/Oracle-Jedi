@@ -1,27 +1,43 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SVGProps } from "react";
+import { Fragment, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SVGProps } from "react";
 import type { HandoffStatus } from "@oj/core";
+import { Tip, useT } from "@oj/core/i18n/react";
+import { UI } from "../locales/ui";
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
 type Variant = "primary" | "ghost" | "danger" | "saber";
 
-export function Button({ variant = "primary", className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  const styles: Record<Variant, string> = {
-    primary: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
-    saber: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
-    ghost: "bg-card text-ink border border-line-2 hover:bg-paper-2 hover:border-ink-3/40",
-    danger: "bg-geru-600 text-card hover:bg-geru-700 border border-geru-700",
-  };
-  return (
-    <button
-      className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-[15px] font-medium leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-45",
-        styles[variant],
-        className,
-      )}
-      {...props}
-    />
+const BUTTON_STYLES: Record<Variant, string> = {
+  primary: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
+  saber: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
+  ghost: "bg-card text-ink border border-line-2 hover:bg-paper-2 hover:border-ink-3/40",
+  danger: "bg-geru-600 text-card hover:bg-geru-700 border border-geru-700",
+};
+
+export const buttonClass = (variant: Variant = "primary", className?: string) =>
+  cx(
+    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-[15px] font-medium leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+    BUTTON_STYLES[variant],
+    className,
   );
+
+export function Button({ variant = "primary", className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+  return <button className={buttonClass(variant, className)} {...props} />;
+}
+
+export function rich(text: string, tags: Record<string, (chunk: string) => ReactNode>): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /<(\w+)>([\s\S]*?)<\/\1>/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const render = tags[m[1]!];
+    out.push(<Fragment key={m.index}>{render ? render(m[2]!) : m[2]}</Fragment>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
 }
 
 export function Card({ title, subtitle, children, className, right }: { title?: ReactNode; subtitle?: ReactNode; children?: ReactNode; className?: string; right?: ReactNode }) {
@@ -59,7 +75,7 @@ export function Input({ label, hint, className, ...props }: InputHTMLAttributes<
 
 type Tone = "slate" | "green" | "red" | "blue" | "amber";
 
-export function Badge({ tone = "slate", children }: { tone?: Tone; children: ReactNode }) {
+export function Badge({ tone = "slate", children, className, ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: Tone; children: ReactNode }) {
   const tones: Record<Tone, string> = {
     slate: "bg-paper-2 text-ink-2 border-line",
     green: "bg-neem-50 text-neem-700 border-neem-200",
@@ -67,16 +83,27 @@ export function Badge({ tone = "slate", children }: { tone?: Tone; children: Rea
     blue: "bg-neel-50 text-neel-700 border-neel-200",
     amber: "bg-haldi-50 text-haldi-700 border-haldi-200",
   };
-  return <span className={cx("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium leading-5", tones[tone])}>{children}</span>;
+  return (
+    <span className={cx("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium leading-5", tones[tone], className)} {...props}>
+      {children}
+    </span>
+  );
 }
 
 export function VerifiedBadge({ verified }: { verified: boolean }) {
+  const t = useT(UI);
   return verified ? (
-    <Badge tone="green">
-      <Icon name="check" className="h-3.5 w-3.5" /> Domain verified
-    </Badge>
+    <Tip text={t("domain.verified.tip")}>
+      <Badge tone="green" tabIndex={0}>
+        <Icon name="check" className="h-3.5 w-3.5" /> {t("domain.verified")}
+      </Badge>
+    </Tip>
   ) : (
-    <Badge tone="amber">Domain not yet verified</Badge>
+    <Tip text={t("domain.unverified.tip")}>
+      <Badge tone="amber" tabIndex={0}>
+        {t("domain.unverified")}
+      </Badge>
+    </Tip>
   );
 }
 
@@ -92,15 +119,23 @@ export function SafetyWords({ words }: { words: string[] }) {
   );
 }
 
+const STATUS_TONE: Record<HandoffStatus, Tone> = {
+  pending: "slate",
+  stored: "blue",
+  opened: "green",
+  revoked: "red",
+  expired: "amber",
+};
+
 export function StatusChip({ status }: { status: HandoffStatus }) {
-  const map: Record<HandoffStatus, { tone: Tone; label: string }> = {
-    pending: { tone: "slate", label: "Pending" },
-    stored: { tone: "blue", label: "Sealed · waiting" },
-    opened: { tone: "green", label: "Opened" },
-    revoked: { tone: "red", label: "Revoked by sender" },
-    expired: { tone: "amber", label: "Expired · destroyed" },
-  };
-  return <Badge tone={map[status].tone}>{map[status].label}</Badge>;
+  const t = useT(UI);
+  return (
+    <Tip text={t(`status.${status}.tip`)}>
+      <Badge tone={STATUS_TONE[status]} tabIndex={0}>
+        {t(`status.${status}`)}
+      </Badge>
+    </Tip>
+  );
 }
 
 export function Spinner() {
@@ -108,15 +143,18 @@ export function Spinner() {
 }
 
 export function PqTag() {
+  const t = useT(UI);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-line-2 bg-card px-2.5 py-0.5 font-mono text-[11.5px] tracking-tight text-ink-2">
-      <Icon name="lock" className="h-3.5 w-3.5 text-neel-600" />
-      HANDOFF-PQ1 · ML-KEM-768 + X25519 · ML-DSA-65
-    </span>
+    <Tip text={t("pq.tip")}>
+      <span tabIndex={0} className="inline-flex items-center gap-1.5 rounded-full border border-line-2 bg-card px-2.5 py-0.5 font-mono text-[11.5px] tracking-tight text-ink-2">
+        <Icon name="lock" className="h-3.5 w-3.5 text-neel-600" />
+        HANDOFF-PQ1 · ML-KEM-768 + X25519 · ML-DSA-65
+      </span>
+    </Tip>
   );
 }
 
-export type IconName = "lock" | "shield" | "check" | "x" | "alert" | "phone" | "link" | "file" | "scissors" | "key" | "arrow" | "eye" | "inbox";
+export type IconName = "lock" | "shield" | "check" | "x" | "alert" | "phone" | "link" | "file" | "scissors" | "key" | "arrow" | "eye" | "inbox" | "globe" | "pause" | "play";
 
 const PATHS: Record<IconName, ReactNode> = {
   lock: (
@@ -173,6 +211,14 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M3 13h5l1 3h6l1-3h5" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </>
+  ),
+  pause: <path d="M9 6v12M15 6v12" />,
+  play: <path d="M8 5.5v13l10.5-6.5z" />,
 };
 
 export function Icon({ name, className = "h-4 w-4", ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {

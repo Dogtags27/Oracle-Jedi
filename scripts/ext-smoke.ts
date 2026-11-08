@@ -143,6 +143,7 @@ try {
   await clickText(vault, "Use trimmed file");
   await vault.waitForSelector("::-p-text(Trimmed and verified)", { timeout: 10000 });
   ok("Trim flattened the W-2 offline: SSN + EIN blacked out, 0 selectable text, metadata stripped, re-scan verified");
+  await vault.evaluate(() => { const box = [...document.querySelectorAll('input[type=checkbox]')].find((c) => c.closest('label')?.textContent?.includes('I understand the risk')) as HTMLInputElement | undefined; box?.click(); });
   await vault.click('button[data-action="seal"]');
   await vault.waitForSelector("::-p-text(Pickup code)", { timeout: 30000 });
   const code = await vault.evaluate(() => document.querySelector("p.font-mono.text-3xl")?.textContent?.trim() ?? "");

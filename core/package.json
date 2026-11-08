@@ -10,7 +10,10 @@
     "./detect": "./src/detect.ts",
     "./trim": "./src/trim.ts",
     "./trim-ui": "./src/trim-ui.tsx",
-    "./clicks": "./src/clicks.ts"
+    "./clicks": "./src/clicks.ts",
+    "./i18n": "./src/i18n/index.ts",
+    "./i18n/react": "./src/i18n/react.tsx",
+    "./findings": "./src/findings.ts"
   },
   "scripts": {
     "test": "vitest run",

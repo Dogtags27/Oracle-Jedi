@@ -1,3 +1,6 @@
+import { translator, type Locale } from "@oj/core/i18n";
+import { SHEATHE_LABELS } from "@/locales/sheathe-labels";
+
 export type SheatheMode = "off" | "arming" | "sharing" | "call" | "manual" | "panic";
 export type Surface = "monitor" | "window" | "browser" | "unknown";
 export type Category = "avatars" | "names" | "previews" | "messages" | "media" | "input";
@@ -32,14 +35,11 @@ export const STATE_KEY = "sheathe:state";
 export const SETTINGS_KEY = "sheathe:settings";
 export const ALLOW_KEY = "sheathe:allow";
 
-export const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "avatars", label: "Profile pictures" },
-  { id: "names", label: "Names and senders" },
-  { id: "previews", label: "Chat and inbox previews" },
-  { id: "messages", label: "Open conversation" },
-  { id: "media", label: "Photos, videos, attachments" },
-  { id: "input", label: "What you're typing" },
-];
+const CATEGORY_IDS: Category[] = ["avatars", "names", "previews", "messages", "media", "input"];
+
+export const CATEGORIES: { id: Category; label: string }[] = CATEGORY_IDS.map((id) => ({ id, label: SHEATHE_LABELS.en[`cat.${id}`] }));
+
+export const categoryLabel = (id: Category, locale: Locale = "en") => translator(SHEATHE_LABELS, locale)(`cat.${id}`);
 
 export const DEFAULT_SETTINGS: SheatheSettings = {
   enabled: true,
@@ -70,11 +70,13 @@ export const MEETING_MATCHES = [
 export const SOCIAL_MATCHES = ["https://web.whatsapp.com/*", "https://mail.google.com/*"];
 
 export const SURFACE_LABEL: Record<Surface, string> = {
-  monitor: "sharing your entire screen",
-  window: "sharing a window",
-  browser: "sharing a tab",
-  unknown: "sharing your screen",
+  monitor: SHEATHE_LABELS.en["surface.monitor"],
+  window: SHEATHE_LABELS.en["surface.window"],
+  browser: SHEATHE_LABELS.en["surface.browser"],
+  unknown: SHEATHE_LABELS.en["surface.unknown"],
 };
+
+export const surfaceLabel = (surface: Surface, locale: Locale = "en") => translator(SHEATHE_LABELS, locale)(`surface.${surface}`);
 
 export function mergeSettings(stored: Partial<SheatheSettings> | undefined): SheatheSettings {
   return {

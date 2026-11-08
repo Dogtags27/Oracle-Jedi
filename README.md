@@ -118,6 +118,20 @@ Every file added to Seal & Attach, the side panel or a request link is scanned *
 
 It all runs in the browser with pdf.js and pdf-lib bundled, so it works offline. Nothing about the document is sent anywhere.
 
+## Languages: English, Español, Français, Deutsch, Português
+
+- **Interface:** every screen of the web app and the extension is available in all five languages. The language picker lives in the web header and the side panel header. The web app defaults to the browser's language, remembers the choice, and accepts `?lang=es` in any link. The extension shares one setting across the side panel, the vault and Gmail.
+- **Findings follow the message.** Avaran detects a message's language **on the device** (word and accent statistics, no network call) and reads it with that language's rules:
+  - **Spanish:** DNI/NIE, NIF, nómina, declaración de la renta.
+  - **French:** RIB, NIR, avis d'imposition, bulletin de paie.
+  - **German:** Steuer-ID, Gehaltsabrechnung, Steuerbescheid.
+  - **Portuguese:** CPF, NIF, holerite, imposto de renda.
+
+  Pressure phrases, credential asks and office names (Gestoría, Cabinet, Steuerkanzlei, Contabilidade) are also read in each language. The Gmail card, the side panel and `/check` then show the findings in that language, and one click switches them back to yours. You can turn this off ("Show findings in each message's language").
+- **Trim and Sheathe** add checksum-validated IBANs (any country) plus Spanish DNI/NIE and NSS, French NIR, German Steuer-ID and Brazilian CPF / Portuguese NIF. They also read dates like "12. März 1986" or "12 de março de 1986". The local IDs only fire when the document is in that language or the number sits next to its label.
+- **Click Guard** recognises "Cerrar", "Fermer", "Schließen" and "Fechar" decoys as well as the English ones.
+- **For contributors:** strings live in typed catalogs (`defineMessages` in `core/src/i18n`). A missing translation fails `tsc`. Analysis code returns codes (`requestedItems: ["national_id"]`, `LinkCheck.facts`, `CheckResponse.facts`, click `Verdict.msg`), and `core/src/findings.ts` renders them in any locale. English output is unchanged, so older clients and the tests keep working.
+
 ## Measured, not claimed
 
 | What | Result | Source |

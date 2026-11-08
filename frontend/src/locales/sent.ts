@@ -1,0 +1,56 @@
+import { defineMessages } from "@oj/core/i18n";
+
+export const SENT = defineMessages(
+  {
+    title: "My sealed documents",
+    intro: "Everything you sealed from this browser. Revoke anything, any time. If it hasn't been opened yet, it's destroyed for good.",
+    "empty.title": "Nothing sealed from this browser yet",
+    "empty.body": "Open a request link from your office, or {link} first.",
+    "empty.link": "check who's asking",
+    keys: "Your revoke keys live only in this browser's storage. Nobody else, including us, can revoke on your behalf.",
+    "keys.tip": "A revoke key is a secret your browser kept when you sealed each file. It's what lets you destroy the file later, so clearing this browser's data takes that ability away.",
+    "keys.label": "What is a revoke key?",
+  },
+  {
+    es: {
+      title: "Mis documentos sellados",
+      intro: "Todo lo que selló desde este navegador. Revoque lo que quiera, cuando quiera. Si aún no se ha abierto, se destruye para siempre.",
+      "empty.title": "Aún no ha sellado nada desde este navegador",
+      "empty.body": "Abra un enlace de solicitud de su oficina, o {link} primero.",
+      "empty.link": "compruebe quién lo pide",
+      keys: "Sus claves de revocación solo existen en el almacenamiento de este navegador. Nadie más, ni siquiera nosotros, puede revocar en su nombre.",
+      "keys.tip": "Una clave de revocación es un secreto que su navegador guardó al sellar cada archivo. Es lo que le permite destruirlo después, así que si borra los datos de este navegador, perderá esa posibilidad.",
+      "keys.label": "¿Qué es una clave de revocación?",
+    },
+    fr: {
+      title: "Mes documents scellés",
+      intro: "Tout ce que vous avez scellé depuis ce navigateur. Révoquez ce que vous voulez, quand vous voulez. S’il n’a pas encore été ouvert, il est détruit définitivement.",
+      "empty.title": "Rien n’a encore été scellé depuis ce navigateur",
+      "empty.body": "Ouvrez un lien de demande de votre cabinet, ou {link} d’abord.",
+      "empty.link": "vérifiez qui le demande",
+      keys: "Vos clés de révocation n’existent que dans le stockage de ce navigateur. Personne d’autre, pas même nous, ne peut révoquer à votre place.",
+      "keys.tip": "Une clé de révocation est un secret que votre navigateur a conservé en scellant chaque fichier. C’est elle qui vous permet de le détruire plus tard : effacer les données de ce navigateur vous retire cette possibilité.",
+      "keys.label": "Qu’est-ce qu’une clé de révocation ?",
+    },
+    de: {
+      title: "Meine versiegelten Dokumente",
+      intro: "Alles, was Sie in diesem Browser versiegelt haben. Widerrufen Sie jederzeit, was Sie möchten. Wurde es noch nicht geöffnet, ist es danach endgültig vernichtet.",
+      "empty.title": "In diesem Browser wurde noch nichts versiegelt",
+      "empty.body": "Öffnen Sie einen Anfragelink Ihrer Kanzlei, oder {link}.",
+      "empty.link": "prüfen Sie zuerst, wer fragt",
+      keys: "Ihre Widerrufsschlüssel liegen nur im Speicher dieses Browsers. Niemand sonst, auch wir nicht, kann in Ihrem Namen widerrufen.",
+      "keys.tip": "Ein Widerrufsschlüssel ist ein Geheimnis, das Ihr Browser beim Versiegeln jeder Datei aufbewahrt hat. Nur damit können Sie die Datei später vernichten. Wenn Sie die Browserdaten löschen, geht diese Möglichkeit verloren.",
+      "keys.label": "Was ist ein Widerrufsschlüssel?",
+    },
+    pt: {
+      title: "Meus documentos selados",
+      intro: "Tudo o que você selou neste navegador. Revogue o que quiser, quando quiser. Se ainda não foi aberto, é destruído para sempre.",
+      "empty.title": "Nada selado neste navegador ainda",
+      "empty.body": "Abra um link de solicitação do seu escritório, ou {link} antes.",
+      "empty.link": "verifique quem está pedindo",
+      keys: "Suas chaves de revogação ficam só no armazenamento deste navegador. Ninguém mais, nem nós, pode revogar em seu nome.",
+      "keys.tip": "Uma chave de revogação é um segredo que seu navegador guardou ao selar cada arquivo. É ela que permite destruir o arquivo depois; se você limpar os dados deste navegador, perde essa possibilidade.",
+      "keys.label": "O que é uma chave de revogação?",
+    },
+  },
+);

@@ -1,6 +1,9 @@
 import type { ContentScriptContext } from "#imports";
+import { formatters, systemLocale, translator, type Locale } from "@oj/core/i18n";
 import { APP_URL } from "@/lib/api";
+import { getLocale, onLocaleChange } from "@/lib/locale";
 import { send, type TabMessage, type ThreadFlag, type VaultResult } from "@/lib/messages";
+import { COMPOSE } from "@/locales/compose";
 
 const EDITOR = 'div[contenteditable="true"][role="textbox"], div[g_editable="true"]';
 const EMAIL = /^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/;
@@ -24,16 +27,29 @@ function recipients(root: HTMLElement): string[] {
   return [...out].map((e) => e.trim().toLowerCase()).filter((e) => EMAIL.test(e));
 }
 
+let current: Locale | null = null;
+const locale = () => current ?? systemLocale();
+const tr = () => translator(COMPOSE, locale());
+
 function until(iso: string) {
   const d = new Date(iso);
-  return d.getTime() - Date.now() < 86_400_000
-    ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const f = formatters(locale());
+  return d.getTime() - Date.now() < 86_400_000 ? f.time(d, { hour: "numeric", minute: "2-digit" }) : f.date(d, { month: "short", day: "numeric" });
+}
+
+function linkParts(r: VaultResult) {
+  const t = tr();
+  return {
+    doc: t("doc", { name: r.name }),
+    who: r.mode === "office" ? t("only", { office: r.officeName ?? t("yourOffice") }) : t("code"),
+    expires: t("expires", { when: until(r.expiresAt) }),
+    pq: t("pq"),
+  };
 }
 
 function linkHtml(r: VaultResult) {
-  const who = r.mode === "office" ? `Only ${esc(r.officeName ?? "your office")} can open it.` : "I'll send you the 6-digit code separately.";
-  return `<div>🔒 <a href="${esc(r.url)}">Sealed document: ${esc(r.name)}</a> · ${who} Self-destructs ${esc(until(r.expiresAt))}. <span style="color:#5f6368">(Post-quantum sealed with Avaran)</span></div>`;
+  const p = linkParts(r);
+  return `<div>🔒 <a href="${esc(r.url)}">${esc(p.doc)}</a> · ${esc(p.who)} ${esc(p.expires)} <span style="color:#5f6368">${esc(p.pq)}</span></div>`;
 }
 
 function insert(editor: HTMLElement, saved: Range | null, results: VaultResult[]) {
@@ -69,10 +85,10 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
 function linkNodes(results: VaultResult[]) {
   const frag = document.createDocumentFragment();
   for (const r of results) {
-    const who = r.mode === "office" ? `Only ${r.officeName ?? "your office"} can open it.` : "I'll send you the 6-digit code separately.";
-    const note = el("span", {}, "(Post-quantum sealed with Avaran)");
+    const p = linkParts(r);
+    const note = el("span", {}, p.pq);
     note.style.color = "#5f6368";
-    frag.append(el("div", {}, "🔒 ", el("a", { href: r.url }, `Sealed document: ${r.name}`), ` · ${who} Self-destructs ${until(r.expiresAt)}. `, note));
+    frag.append(el("div", {}, "🔒 ", el("a", { href: r.url }, p.doc), ` · ${p.who} ${p.expires} `, note));
   }
   frag.append(el("div", {}, el("br")));
   return frag;
@@ -104,7 +120,7 @@ function openVault(ctx: ContentScriptContext, recipientsList: string[], flag: Th
   const nonce = crypto.randomUUID();
   const host = document.createElement("oj-vault");
   const shadow = host.attachShadow({ mode: "closed" });
-  const frame = el("iframe", { title: "Avaran vault" });
+  const frame = el("iframe", { title: tr()("vault") });
   frame.setAttribute("allow", "");
   const backdrop = el("div", { className: "bd" }, el("div", { className: "p" }, frame));
   shadow.append(el("style", { textContent: VAULT_CSS }), backdrop);
@@ -137,7 +153,24 @@ export function mountSealButton(ctx: ContentScriptContext, toolbar: HTMLElement,
   if (toolbar.querySelector("oj-seal")) return;
   const host = document.createElement("oj-seal");
   const shadow = host.attachShadow({ mode: "closed" });
-  const button = el("button", { className: "b", type: "button", title: "Attach a sealed link instead of a readable file" }, lockIcon(), "Seal & Attach");
+  const label = document.createTextNode("");
+  const icon = lockIcon();
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("focusable", "false");
+  const button = el("button", { className: "b", type: "button" }, icon, label);
+  const paint = () => {
+    const t = tr();
+    label.data = t("button");
+    button.title = t("tip");
+  };
+  paint();
+  const sync = (l: Locale) => {
+    current = l;
+    paint();
+  };
+  getLocale().then(sync);
+  const offLocale = onLocaleChange((l) => (host.isConnected ? sync(l) : offLocale()));
+  ctx.onInvalidated(offLocale);
   shadow.append(el("style", { textContent: BUTTON_CSS }), button);
   let saved: Range | null = null;
   button.addEventListener("mousedown", (e) => {

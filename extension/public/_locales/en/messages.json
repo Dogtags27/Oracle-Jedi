@@ -1,0 +1,22 @@
+{
+  "extDescription": {
+    "message": "Privacy layer for your browser: check who's asking, seal documents, hide chats when screen sharing, stop deceptive buttons.",
+    "description": "Extension description shown in the Chrome Web Store and on chrome://extensions. Max 132 characters."
+  },
+  "cmdSheatheToggle": {
+    "message": "Sheathe on/off (works even while Zoom or Teams has focus)",
+    "description": "Keyboard shortcut description: turn Sheathe (blur chats while screen sharing) on or off."
+  },
+  "cmdSheathePanic": {
+    "message": "Panic: blur every chat and inbox now",
+    "description": "Keyboard shortcut description: immediately blur every chat and inbox."
+  },
+  "cmdSheatheTab": {
+    "message": "Sheathe this page: blur personal info on any site",
+    "description": "Keyboard shortcut description: blur personal information on the current page."
+  },
+  "cmdGuardPage": {
+    "message": "Click Guard: check this page for deceptive buttons",
+    "description": "Keyboard shortcut description: scan the current page for deceptive buttons with Click Guard."
+  }
+}

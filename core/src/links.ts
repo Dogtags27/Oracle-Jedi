@@ -1,5 +1,6 @@
 import { getDomainWithoutSuffix, getHostname } from "tldts";
 import { registrableDomain } from "./request";
+import { attachmentReason, findingsT } from "./findings";
 
 export type LinkRisk =
   | "script"
@@ -16,6 +17,13 @@ export type LinkRisk =
 
 export type RiskLevel = "high" | "medium" | "low";
 
+export interface LinkFact {
+  key: LinkRisk | "not_official_named";
+  vars?: Record<string, string>;
+}
+
+export type AttachmentRisk = "runs_code" | "opens_page" | "disk_image" | "macros" | "archive";
+
 export interface LinkCheck {
   href: string;
   host: string;
@@ -23,6 +31,7 @@ export interface LinkCheck {
   shownDomain?: string;
   risks: LinkRisk[];
   reasons: string[];
+  facts: LinkFact[];
   level: RiskLevel;
 }
 
@@ -37,6 +46,8 @@ export interface AttachmentCheck {
   ext: string;
   level: RiskLevel;
   reason: string;
+  code: AttachmentRisk | "";
+  disguised: boolean;
 }
 
 export const KNOWN_PORTALS = new Set([
@@ -139,58 +150,70 @@ export function analyzeLink(rawHref: string, text = "", ctx: LinkContext = {}): 
   const href = unwrapRedirect(rawHref.trim());
   const risks: LinkRisk[] = [];
   const reasons: string[] = [];
-  const add = (risk: LinkRisk, reason: string) => {
+  const facts: LinkFact[] = [];
+  const t = findingsT("en");
+  const add = (risk: LinkRisk, vars?: Record<string, string>, key: LinkFact["key"] = risk) => {
     risks.push(risk);
-    reasons.push(reason);
+    facts.push(vars ? { key, vars } : { key });
+    reasons.push(t(`risk.${key}`, vars));
   };
   let url: URL;
   try {
     url = new URL(href);
   } catch {
-    return { href, host: "", domain: "", risks, reasons, level: "low" };
+    return { href, host: "", domain: "", risks, reasons, facts, level: "low" };
   }
   if (/^(javascript|data|vbscript|file|blob):$/i.test(url.protocol)) {
-    add("script", "This isn't a website: it runs code or opens a hidden document");
-    return { href, host: "", domain: "", risks, reasons, level: "high" };
+    add("script");
+    return { href, host: "", domain: "", risks, reasons, facts, level: "high" };
   }
-  if (!/^https?:$/.test(url.protocol)) return { href, host: "", domain: "", risks, reasons, level: "low" };
+  if (!/^https?:$/.test(url.protocol)) return { href, host: "", domain: "", risks, reasons, facts, level: "low" };
   const host = (getHostname(href) ?? url.hostname).toLowerCase();
   const domain = registrableDomain(host);
   const shown = shownDomain(text);
-  if (ctx.trustedHosts?.includes(host) && !url.username && !url.password) return { href, host, domain, risks, reasons, level: "low" };
+  if (ctx.trustedHosts?.includes(host) && !url.username && !url.password) return { href, host, domain, risks, reasons, facts, level: "low" };
   const official = ctx.officialDomain ? registrableDomain(ctx.officialDomain) : undefined;
-  const who = ctx.officialName ? `${ctx.officialName}'s` : "the sender's";
 
-  if (url.username || url.password) add("userinfo", `Everything before "@" is a decoy: it really goes to ${host}`);
-  if (host.split(".").some((part) => part.startsWith("xn--"))) add("punycode", "Uses look-alike foreign characters in the address");
-  if (isIp(host)) add("ip_host", "Goes to a bare IP address, not a named website");
+  if (url.username || url.password) add("userinfo", { host });
+  if (host.split(".").some((part) => part.startsWith("xn--"))) add("punycode");
+  if (isIp(host)) add("ip_host");
   if (shown && shown !== domain) {
-    if (TRACKERS.has(domain)) add("tracker", `Shows ${shown} but passes through ${domain}, so the final stop is hidden`);
-    else add("text_mismatch", `Shows ${shown} but actually goes to ${domain}`);
+    if (TRACKERS.has(domain)) add("tracker", { shown, domain });
+    else add("text_mismatch", { shown, domain });
   }
   if (official && domain !== official && !KNOWN_PORTALS.has(domain)) {
-    if (isLookalike(host, official)) add("lookalike", `${domain} imitates ${official}`);
-    else if (!TRACKERS.has(domain)) add("not_official", `Not ${who} official site (${official})`);
+    if (isLookalike(host, official)) add("lookalike", { domain, official });
+    else if (!TRACKERS.has(domain)) {
+      if (ctx.officialName) add("not_official", { name: ctx.officialName, official }, "not_official_named");
+      else add("not_official", { official });
+    }
   }
-  if (SHORTENERS.has(domain)) add("shortener", "A link shortener hides where this really goes");
-  if (FREE_HOSTS.has(domain) || FREE_HOSTS.has(host)) add("free_host", `${domain} is free hosting: anyone can put a page there`);
-  if (DOWNLOAD_PATH.test(url.pathname)) add("download", "Downloads a file that can run code or hide one");
+  if (SHORTENERS.has(domain)) add("shortener");
+  if (FREE_HOSTS.has(domain) || FREE_HOSTS.has(host)) add("free_host", { domain });
+  if (DOWNLOAD_PATH.test(url.pathname)) add("download");
 
   const level: RiskLevel = risks.some((r) => HIGH.has(r)) ? "high" : risks.length ? "medium" : "low";
-  return { href, host, domain, shownDomain: shown, risks, reasons, level };
+  return { href, host, domain, shownDomain: shown, risks, reasons, facts, level };
 }
 
 export function analyzeAttachment(name: string): AttachmentCheck {
   const clean = name.trim();
   const ext = clean.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() ?? "";
   const disguised = /\.(pdf|docx?|xlsx?|jpe?g|png|txt)\.[a-z0-9]+$/i.test(clean);
-  const lead = disguised ? `Disguised as a document, but it's really .${ext}. ` : "";
-  if (RUNS_CODE.test(clean)) return { name: clean, ext, level: "high", reason: `${lead}Opening it runs a program on your computer` };
-  if (OPENS_PAGE.test(clean)) return { name: clean, ext, level: "high", reason: `${lead}Opens a web page from your disk, a common way to show a fake sign-in form` };
-  if (DISK_IMAGE.test(clean)) return { name: clean, ext, level: "high", reason: `${lead}Disk image, often used to slip programs past security checks` };
-  if (MACROS.test(clean)) return { name: clean, ext, level: "high", reason: "Office file with macros: never click \"Enable content\"" };
-  if (ARCHIVE.test(clean)) return { name: clean, ext, level: "medium", reason: "Archive: check what's inside before opening anything" };
-  return { name: clean, ext, level: "low", reason: "" };
+  const code: AttachmentRisk | "" = RUNS_CODE.test(clean)
+    ? "runs_code"
+    : OPENS_PAGE.test(clean)
+      ? "opens_page"
+      : DISK_IMAGE.test(clean)
+        ? "disk_image"
+        : MACROS.test(clean)
+          ? "macros"
+          : ARCHIVE.test(clean)
+            ? "archive"
+            : "";
+  const level: RiskLevel = code === "archive" ? "medium" : code ? "high" : "low";
+  const base = { name: clean, ext, level, code, disguised };
+  return { ...base, reason: attachmentReason({ ...base, reason: "" }, "en") };
 }
 
 export const worstLevel = (levels: RiskLevel[]): RiskLevel =>

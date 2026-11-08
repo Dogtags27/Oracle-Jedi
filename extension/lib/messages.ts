@@ -7,6 +7,8 @@ export interface ThreadFlag {
   officialPhone?: string;
   officialUploadUrl?: string;
   explanation: string;
+  sender?: string;
+  localized?: boolean;
 }
 
 export interface VaultContext {

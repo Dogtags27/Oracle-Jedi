@@ -4,6 +4,7 @@ import { analyzeLink } from "@oj/core/links";
 import { toCheckRequest } from "@oj/core/request";
 import type { ContentScriptContext, ShadowRootContentScriptUi } from "#imports";
 import { send, type ThreadFlag } from "@/lib/messages";
+import { ExtI18n } from "@/lib/i18n";
 import { Card } from "./Card";
 import { Guard } from "./Guard";
 import { mountSealButton } from "./compose";
@@ -65,7 +66,11 @@ export default defineContentScript({
         isolateEvents: ["keydown", "keyup", "keypress"],
         onMount(container) {
           const root = createRoot(container);
-          root.render(<Guard check={check} officialDomain={linkCtx.officialDomain} officialName={linkCtx.officialName} onClose={() => ui.remove()} />);
+          root.render(
+            <ExtI18n>
+              <Guard check={check} officialDomain={linkCtx.officialDomain} officialName={linkCtx.officialName} language={state?.scan.request.language} onClose={() => ui.remove()} />
+            </ExtI18n>,
+          );
           return root;
         },
         onRemove: (root) => root?.unmount(),
@@ -103,6 +108,8 @@ export default defineContentScript({
             officialPhone: r.officialPhone,
             officialUploadUrl: r.officialUploadUrl,
             explanation: r.explanation,
+            sender: r.sender,
+            localized: Boolean(r.facts),
           };
         }
       }
@@ -120,6 +127,7 @@ export default defineContentScript({
         onMount(container) {
           const root = createRoot(container);
           root.render(
+            <ExtI18n>
             <Card
               scan={state.scan}
               canCheck={x.claimedOrg.trim().length >= 2}
@@ -130,7 +138,8 @@ export default defineContentScript({
                 markLinks(body, state);
               }}
               onLedger={() => send({ type: "panel:open", tab: "ledger" }).catch(() => {})}
-            />,
+            />
+            </ExtI18n>,
           );
           return root;
         },

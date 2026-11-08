@@ -1,5 +1,8 @@
 import { SENSITIVE_KINDS, detect } from "@oj/core/detect";
 import type { FindingKind } from "@oj/core";
+import { systemLocale, translator, type Locale } from "@oj/core/i18n";
+import { getLocale, onLocaleChange } from "@/lib/locale";
+import { SHEATHE } from "@/locales/sheathe";
 
 const KINDS: FindingKind[] = [...SENSITIVE_KINDS, "email", "phone"];
 const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "INPUT", "SELECT", "OPTION", "CODE", "OJ-SHEATHE-ANY"]);
@@ -88,18 +91,37 @@ export default defineUnlistedScript(() => {
     render();
   }
 
+  let locale: Locale = systemLocale();
+  let tr = translator(SHEATHE, locale);
+
   const host = document.createElement("oj-sheathe-any");
   const shadow = host.attachShadow({ mode: "closed" });
   const box = Object.assign(document.createElement("div"), { className: "p" });
+  box.setAttribute("role", "region");
   shadow.append(Object.assign(document.createElement("style"), { textContent: PILL }), box);
   function render() {
     const manual = document.querySelectorAll("[data-oj-pii-manual]").length;
+    const prev = box.querySelector("button");
+    const focused = prev !== null && shadow.activeElement === prev;
     box.replaceChildren();
-    const off = Object.assign(document.createElement("button"), { textContent: "Unsheathe", onclick: () => api.toggle() });
+    box.setAttribute("aria-label", tr("any.name"));
+    const off = Object.assign(document.createElement("button"), { textContent: tr("any.off"), title: tr("any.offTip"), onclick: () => api.toggle() });
     const label = document.createElement("span");
-    label.append(Object.assign(document.createElement("b"), { textContent: `${count + manual} items sheathed` }), Object.assign(document.createElement("span"), { className: "dim", textContent: " · Alt+click to hide more" }));
-    box.append(Object.assign(document.createElement("span"), { className: "dot" }), label, off);
+    label.append(Object.assign(document.createElement("b"), { textContent: tr("any.count", { n: count + manual }) }), Object.assign(document.createElement("span"), { className: "dim", textContent: ` · ${tr("any.hint")}` }));
+    const dot = Object.assign(document.createElement("span"), { className: "dot" });
+    dot.setAttribute("aria-hidden", "true");
+    box.append(dot, label, off);
+    if (focused) off.focus();
   }
+
+  const setLocale = (next: Locale) => {
+    if (next === locale) return;
+    locale = next;
+    tr = translator(SHEATHE, next);
+    if (host.isConnected) render();
+  };
+  getLocale().then(setLocale);
+  onLocaleChange(setLocale);
 
   const onClick = (e: MouseEvent) => {
     if (!e.altKey || root.getAttribute("data-oj-any") !== "on") return;

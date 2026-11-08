@@ -1,5 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode, SVGProps } from "react";
+import { Fragment, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode, type SVGProps } from "react";
 import type { HandoffStatus } from "@oj/core";
+import { formatters, type Locale } from "@oj/core/i18n";
+import { Tip, useT } from "@oj/core/i18n/react";
+import { UI } from "@/locales/ui";
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
@@ -26,7 +29,7 @@ export function Button({ variant = "primary", className, ...props }: ButtonHTMLA
 
 export type Tone = "slate" | "green" | "red" | "blue" | "amber";
 
-export function Badge({ tone = "slate", children }: { tone?: Tone; children: ReactNode }) {
+export function Badge({ tone = "slate", children, className, ...rest }: { tone?: Tone; children: ReactNode } & HTMLAttributes<HTMLSpanElement>) {
   const tones: Record<Tone, string> = {
     slate: "bg-paper-2 text-ink-2 border-line",
     green: "bg-neem-50 text-neem-700 border-neem-200",
@@ -34,7 +37,11 @@ export function Badge({ tone = "slate", children }: { tone?: Tone; children: Rea
     blue: "bg-neel-50 text-neel-700 border-neel-200",
     amber: "bg-haldi-50 text-haldi-700 border-haldi-200",
   };
-  return <span className={cx("inline-flex items-center gap-1 rounded-full border px-2 py-px text-[11.5px] font-medium leading-5", tones[tone])}>{children}</span>;
+  return (
+    <span {...rest} className={cx("inline-flex items-center gap-1 rounded-full border px-2 py-px text-[11.5px] font-medium leading-5", tones[tone], className)}>
+      {children}
+    </span>
+  );
 }
 
 export function Section({ title, right, children, className }: { title?: ReactNode; right?: ReactNode; children?: ReactNode; className?: string }) {
@@ -42,7 +49,7 @@ export function Section({ title, right, children, className }: { title?: ReactNo
     <section className={cx("rounded-xl border border-line bg-card p-3.5", className)}>
       {(title || right) && (
         <div className="mb-2.5 flex items-center justify-between gap-2">
-          {title && <h2 className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-3 [font-family:var(--font-sans)]">{title}</h2>}
+          {title && <h2 className="min-w-0 text-[11.5px] font-semibold uppercase tracking-[0.1em] text-ink-3 [font-family:var(--font-sans)]">{title}</h2>}
           {right}
         </div>
       )}
@@ -63,35 +70,52 @@ export function SafetyWords({ words }: { words: string[] }) {
   );
 }
 
+const STATUS_TONE: Record<HandoffStatus, Tone> = {
+  pending: "slate",
+  stored: "blue",
+  opened: "green",
+  revoked: "red",
+  expired: "amber",
+};
+
 export function StatusChip({ status }: { status: HandoffStatus }) {
-  const map: Record<HandoffStatus, { tone: Tone; label: string }> = {
-    pending: { tone: "slate", label: "Pending" },
-    stored: { tone: "blue", label: "Sealed · waiting" },
-    opened: { tone: "green", label: "Opened" },
-    revoked: { tone: "red", label: "Revoked" },
-    expired: { tone: "amber", label: "Expired · destroyed" },
-  };
-  return <Badge tone={map[status].tone}>{map[status].label}</Badge>;
+  const t = useT(UI);
+  return (
+    <Tip text={t(`status.${status}.tip`)}>
+      <Badge tone={STATUS_TONE[status]} tabIndex={0}>
+        {t(`status.${status}`)}
+      </Badge>
+    </Tip>
+  );
 }
 
 export function Spinner() {
-  return <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/25 border-t-current" />;
+  return <span aria-hidden="true" className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/25 border-t-current" />;
 }
 
-export function bytes(n: number | null | undefined): string {
+export function bytes(n: number | null | undefined, locale: Locale = "en"): string {
+  if (locale !== "en") return formatters(locale).bytes(n);
   if (!n) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
   const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
   return `${(n / 1024 ** i).toFixed(i ? 1 : 0)} ${units[i]}`;
 }
 
-export function countdown(iso: string, now = Date.now()): string {
+export function countdown(iso: string, now = Date.now(), locale: Locale = "en"): string {
+  if (locale !== "en") return formatters(locale).countdown(iso, now);
   const s = Math.max(0, Math.round((new Date(iso).getTime() - now) / 1000));
   if (s === 0) return "destroying…";
   if (s < 60) return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
+}
+
+export function rich(template: string, parts: Record<string, ReactNode>): ReactNode {
+  return template.split(/(\{\w+\})/).map((seg, i) => {
+    const name = /^\{(\w+)\}$/.exec(seg)?.[1];
+    return <Fragment key={i}>{name !== undefined && name in parts ? parts[name] : seg}</Fragment>;
+  });
 }
 
 export function DomainParts({ host, domain }: { host: string; domain: string }) {
@@ -104,7 +128,7 @@ export function DomainParts({ host, domain }: { host: string; domain: string }) 
   );
 }
 
-export type IconName = "lock" | "shield" | "check" | "x" | "alert" | "eye" | "arrow";
+export type IconName = "lock" | "shield" | "check" | "x" | "alert" | "eye" | "arrow" | "globe";
 
 const PATHS: Record<IconName, ReactNode> = {
   lock: (
@@ -129,6 +153,12 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" />
+    </>
+  ),
 };
 
 export function Icon({ name, className = "h-4 w-4", ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {

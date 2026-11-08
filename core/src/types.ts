@@ -13,7 +13,11 @@ export type FindingKind =
   | "dob"
   | "mrz"
   | "email"
-  | "phone";
+  | "phone"
+  | "iban"
+  | "national_id"
+  | "tax_id"
+  | "social_insurance";
 
 export interface Finding {
   kind: FindingKind;
@@ -103,6 +107,22 @@ export interface Evidence {
   corroborated?: boolean;
 }
 
+export type CheckFactCode =
+  | "phone_match"
+  | "sender_absent"
+  | "personal_email"
+  | "phone_not_on_site"
+  | "sender_lookalike"
+  | "link_lookalike"
+  | "link_elsewhere"
+  | "registry_unverified"
+  | "no_official_site";
+
+export interface CheckFact {
+  code: CheckFactCode;
+  vars?: Record<string, string>;
+}
+
 export interface CheckResponse {
   verdict: Verdict;
   claimedOrg: string;
@@ -114,6 +134,8 @@ export interface CheckResponse {
   evidence: Evidence[];
   signals: string[];
   explanation: string;
+  facts?: CheckFact[];
+  sender?: string;
   latencyMs: number;
   source: "registry" | "cache" | "live";
   providers: string[];

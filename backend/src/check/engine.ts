@@ -6,11 +6,12 @@ import {
   stripMarkup,
   normalizePhone,
   registrableDomain,
+  type CheckFact,
   type CheckRequest,
   type CheckResponse,
   type Evidence,
-  type Verdict,
 } from "@oj/core";
+import { explainCheck, signalText } from "@oj/core/findings";
 import { db } from "../db";
 import { env } from "../env";
 import { exaSearch, tavilyExtract, tavilySearch, type WebPage } from "./providers";
@@ -175,21 +176,13 @@ async function registry(org: string, senderDomain: string) {
   return byDomain.data ?? byName.data;
 }
 
-function explanation(verdict: Verdict, req: CheckRequest, officialDomain?: string, phone?: string) {
-  const who = req.senderEmail || req.senderDomain || "this sender";
-  const call = phone ? ` If in doubt, call ${phone}, the number on their official site, not the one in the message.` : "";
-  if (verdict === "verified") return `${who} matches ${req.claimedOrg}'s official presence at ${officialDomain}.${call}`;
-  if (verdict === "mismatch") return `${req.claimedOrg}'s official site is ${officialDomain}, and ${who} doesn't appear anywhere on it. Don't send documents to this address.${call}`;
-  return `We couldn't confirm who ${req.claimedOrg} really is from public sources. Don't send anything until you've confirmed by phone using a number you already trust.`;
-}
-
 export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
   const started = Date.now();
   const deadline = started + env.checkTimeoutMs;
   const senderDomain = req.senderDomain ? registrableDomain(req.senderDomain) : "";
   const senderEmail = (req.senderEmail ?? "").toLowerCase();
   const isPersonal = PERSONAL_EMAIL_DOMAINS.has(senderDomain);
-  const signals: string[] = [];
+  const facts: CheckFact[] = [];
   const evidence: Evidence[] = [];
   const now = () => new Date().toISOString();
 
@@ -245,7 +238,7 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
   const phoneHits = req.phones.filter((p) => phonesOnSite.some((s) => normalizePhone(s) === normalizePhone(p)));
   if (phoneHits.length) {
     addQuote(phonesOnSite.find((s) => normalizePhone(s) === normalizePhone(phoneHits[0])));
-    signals.push(`Phone number in the message matches the official site`);
+    facts.push({ code: "phone_match" });
   } else if (officialPhone) addQuote(officialPhone);
 
   const orgWord = tokens(req.claimedOrg).sort((a, b) => b.length - a.length)[0];
@@ -253,23 +246,30 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
 
   const webEvidence = evidence.filter((e) => e.source !== "registry" && e.verified).length;
   const registryDecisive = Boolean(office?.dns_verified_at);
-  let verdict: Verdict = "unknown";
+  let verdict: CheckResponse["verdict"] = "unknown";
   if (officialDomain && (emailListed || domainOfficial)) verdict = "verified";
   else if (officialDomain && senderDomain && (webEvidence > 0 || registryDecisive)) verdict = "mismatch";
 
+  const domainVar = officialDomain ?? "";
   if (verdict === "mismatch") {
-    signals.unshift(`${senderEmail || senderDomain} doesn't appear on ${officialDomain}`);
-    if (isPersonal) signals.push("Sent from a free personal email account");
-    if (req.phones.length && !phoneHits.length && phonesOnSite.length) signals.push("Phone number in the message isn't on the official site");
+    facts.unshift({ code: "sender_absent", vars: { sender: senderEmail || senderDomain, domain: domainVar } });
+    if (isPersonal) facts.push({ code: "personal_email" });
+    if (req.phones.length && !phoneHits.length && phonesOnSite.length) facts.push({ code: "phone_not_on_site" });
   }
   const lookalike = (d: string) => Boolean(officialDomain && isLookalike(d, officialDomain));
-  if (senderDomain && lookalike(senderDomain)) signals.splice(1, 0, `${senderDomain} is a look-alike imitating ${officialDomain}`);
+  if (senderDomain && lookalike(senderDomain)) facts.splice(1, 0, { code: "sender_lookalike", vars: { sender: senderDomain, domain: domainVar } });
   for (const d of req.linkDomains) {
     if (!officialDomain || d === officialDomain || KNOWN_PORTALS.has(d)) continue;
-    signals.push(lookalike(d) ? `Link goes to look-alike ${d}, imitating ${officialDomain}` : `Link points to ${d}, not ${officialDomain}`);
+    facts.push({ code: lookalike(d) ? "link_lookalike" : "link_elsewhere", vars: { link: d, domain: domainVar } });
   }
-  if (office && !office.dns_verified_at) signals.push(`${office.name} is registered but hasn't verified its domain yet`);
-  if (!officialDomain) signals.push("No official website found for this name");
+  if (office && !office.dns_verified_at) facts.push({ code: "registry_unverified", vars: { name: office.name } });
+  if (!officialDomain) facts.push({ code: "no_official_site" });
+  const seen = new Set<string>();
+  const uniqueFacts = facts.filter((f) => {
+    const text = signalText(f, "en");
+    return !seen.has(text) && Boolean(seen.add(text));
+  });
+  const sender = req.senderEmail || req.senderDomain || undefined;
 
   const portal = (rawAll.match(/https?:\/\/[^\s)\]"'<>]+/g) ?? []).find((u) => PORTAL_HINT.test(u));
   return {
@@ -281,8 +281,10 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
     officialPhone,
     officialVerifiedByDns: office ? Boolean(office.dns_verified_at) : undefined,
     evidence: evidence.slice(0, 5),
-    signals: [...new Set(signals)],
-    explanation: explanation(verdict, req, officialDomain, officialPhone),
+    signals: uniqueFacts.map((f) => signalText(f, "en")),
+    explanation: explainCheck({ verdict, claimedOrg: req.claimedOrg, sender, officialDomain, officialPhone }, "en"),
+    facts: uniqueFacts,
+    sender,
     latencyMs: Date.now() - started,
     source,
     providers: found?.providers ?? providersUsed,

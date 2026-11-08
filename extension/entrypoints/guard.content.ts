@@ -13,6 +13,10 @@ import {
   type ReasonCode,
   type Verdict,
 } from "@oj/core/clicks";
+import { clickReason, type ClickMsg } from "@oj/core/findings";
+import { systemLocale, translator, type KeyOf, type Locale } from "@oj/core/i18n";
+import { getLocale, onLocaleChange } from "@/lib/locale";
+import { GUARD } from "@/locales/guard";
 
 const LOG_KEY = "guard:log";
 const CANDIDATES = 'a[href], button, [role="button"], input[type="submit"], input[type="button"], input[type="image"], [data-href], [data-url], [data-oj-hint]';
@@ -76,10 +80,17 @@ button.quiet:hover{background:#eee8dc;color:#1e1b17}
 .near,.hl{animation:oj-in .14s ease-out}
 @media (prefers-reduced-motion:reduce){.near,.hl{animation:none}}`;
 
+interface Why {
+  reason: string;
+  msg?: ClickMsg;
+}
+
+type Judged = Verdict & Why;
+
 interface Flag {
   label: string;
   url: string;
-  verdict: Verdict;
+  verdict: Judged;
   decoy: boolean;
   kind: FlagKind;
 }
@@ -92,25 +103,35 @@ interface Target {
   open: boolean;
 }
 
-const STOP = "If you click, Avaran stops it and asks you first.";
-const COPY: Record<FlagKind, { title: string; why: string; rel: string; foot: string }> = {
-  dismiss: { title: "A fake way out", why: "It looks like it closes or declines, but it is a link to another site.", rel: "Goes to", foot: STOP },
-  form: { title: "A fake way out", why: "It looks like a way out, but it submits this form, and anything you typed, to another site.", rel: "Sends to", foot: STOP },
-  overlay: { title: "Invisible click trap", why: "This whole highlighted area is one invisible link. A click anywhere inside it would open another site.", rel: "Clicks go to", foot: "Avaran made it click-through, so your clicks reach the page underneath." },
-  frame: { title: "Invisible click trap", why: "An invisible page from another site is laid over this area to catch your clicks.", rel: "Clicks go to", foot: "Avaran made it click-through, so your clicks reach the page underneath." },
-  decoy: { title: "Decoy download button", why: "One of several download buttons here that lead to different sites. The real file is on this site.", rel: "Goes to", foot: "If you click, Avaran asks before you leave." },
-  mismatch: { title: "The link text lies", why: "The words show one address, but the link goes somewhere else.", rel: "Goes to", foot: STOP },
-  extra: { title: "Opens a second site too", why: "The link itself is fine, but its click code also opens another site in a new tab.", rel: "Also opens", foot: "If you click, Avaran lets the link work and blocks the second site." },
-  lookalike: { title: "Look-alike address", why: "The address uses characters that imitate another site's name.", rel: "Goes to", foot: "Check the address before you continue." },
-  doc: { title: "Hidden document link", why: "It opens a document packed inside the link instead of a website.", rel: "Opens", foot: STOP },
-  learned: { title: "Caught on the last click", why: "When this was clicked, it tried to send you to another site. Avaran stopped it.", rel: "Tried to open", foot: "Avaran will keep stopping it on this page." },
+type Key = KeyOf<typeof GUARD>;
+
+const COPY: Record<FlagKind, { title: Key; why: Key; rel: Key; foot: Key }> = {
+  dismiss: { title: "kind.dismiss.title", why: "kind.dismiss.why", rel: "rel.goesTo", foot: "stop" },
+  form: { title: "kind.form.title", why: "kind.form.why", rel: "rel.sendsTo", foot: "stop" },
+  overlay: { title: "kind.overlay.title", why: "kind.overlay.why", rel: "rel.clicksGoTo", foot: "passThrough" },
+  frame: { title: "kind.frame.title", why: "kind.frame.why", rel: "rel.clicksGoTo", foot: "passThrough" },
+  decoy: { title: "kind.decoy.title", why: "kind.decoy.why", rel: "rel.goesTo", foot: "kind.decoy.foot" },
+  mismatch: { title: "kind.mismatch.title", why: "kind.mismatch.why", rel: "rel.goesTo", foot: "stop" },
+  extra: { title: "kind.extra.title", why: "kind.extra.why", rel: "rel.alsoOpens", foot: "kind.extra.foot" },
+  lookalike: { title: "kind.lookalike.title", why: "kind.lookalike.why", rel: "rel.goesTo", foot: "kind.lookalike.foot" },
+  doc: { title: "kind.doc.title", why: "kind.doc.why", rel: "rel.opens", foot: "stop" },
+  learned: { title: "kind.learned.title", why: "kind.learned.why", rel: "rel.triedToOpen", foot: "kind.learned.foot" },
 };
+
+const MARKS: Record<Locale, [string, string]> = { en: ["“", "”"], es: ["«", "»"], fr: ["« ", " »"], de: ["„", "“"], pt: ["“", "”"] };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]) {
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
 }
+
+function attrs<T extends Element>(node: T, values: Record<string, string>) {
+  for (const [k, v] of Object.entries(values)) node.setAttribute(k, v);
+  return node;
+}
+
+const dot = () => attrs(el("span", { className: "dot" }), { "aria-hidden": "true" });
 
 function labelOf(node: Element): string {
   const own = node.getAttribute("aria-label") || node.getAttribute("title") || (node as HTMLInputElement).value || "";
@@ -193,6 +214,12 @@ export default defineContentScript({
     let blocked = 0;
     let open = false;
     let modalUp = false;
+    let locale: Locale = systemLocale();
+    let tr = translator(GUARD, locale);
+    let repaintModal: (() => void) | null = null;
+    let repaintToast: (() => void) | null = null;
+    const say = (v: Why) => (locale === "en" ? v.reason : clickReason(v, locale));
+    const quote = (s: string) => `${MARKS[locale][0]}${s}${MARKS[locale][1]}`;
 
     const host = document.createElement("oj-click-guard");
     const shadow = host.attachShadow({ mode: "closed" });
@@ -205,11 +232,11 @@ export default defineContentScript({
     ui.append(nearBox, pillBox, toastBox, modalBox);
     const ensureHost = () => !host.isConnected && document.documentElement.append(host);
 
-    async function log(kind: string, url: string, label: string, reason: string) {
+    async function log(kind: string, url: string, label: string, why: Why) {
       blocked++;
       try {
         const current = ((await browser.storage.local.get(LOG_KEY))[LOG_KEY] as unknown[] | undefined) ?? [];
-        const entry = { at: new Date().toISOString(), page: location.hostname, kind, label: label.slice(0, 60), dest: url ? siteOf(url) : "", url: url.slice(0, 200), reason };
+        const entry = { at: new Date().toISOString(), page: location.hostname, kind, label: label.slice(0, 60), dest: url ? siteOf(url) : "", url: url.slice(0, 200), reason: why.reason, ...(why.msg ? { msg: why.msg } : {}) };
         await browser.storage.local.set({ [LOG_KEY]: [entry, ...current].slice(0, 50) });
       } catch {
         return;
@@ -286,17 +313,17 @@ export default defineContentScript({
       const level = t.flag.verdict.level === "high" ? "high" : "medium";
       const copy = COPY[t.flag.kind];
       const url = t.flag.url;
-      const says = t.big ? "nothing, it is invisible" : t.flag.label ? `“${t.flag.label.length > 40 ? `${t.flag.label.slice(0, 39)}…` : t.flag.label}”` : "(no text)";
-      const dest = /^https?:/i.test(url) ? el("span", { className: "v mono" }, ...hostParts(url)) : el("span", { className: "v" }, url ? "a hidden document" : "another site");
-      const hl = el("div", { className: `hl ${level}${t.big ? " big" : ""}` }, el("span", { className: "tag" }, t.big ? "Invisible link: this whole area" : "Real click area"));
+      const says = t.big ? tr("near.invisible") : t.flag.label ? quote(t.flag.label.length > 40 ? `${t.flag.label.slice(0, 39)}…` : t.flag.label) : tr("near.noText");
+      const dest = /^https?:/i.test(url) ? el("span", { className: "v mono" }, ...hostParts(url)) : el("span", { className: "v" }, url ? tr("near.hiddenDoc") : tr("near.anotherSite"));
+      const hl = attrs(el("div", { className: `hl ${level}${t.big ? " big" : ""}` }, el("span", { className: "tag" }, t.big ? tr("near.tagBig") : tr("near.tag"))), { "aria-hidden": "true" });
       const card = el(
         "div",
         { className: `near ${level}` },
-        el("div", { className: "eyebrow" }, "Avaran · before you click"),
-        el("div", { className: "title" }, copy.title),
-        el("div", { className: "rows" }, el("span", { className: "k" }, "Says"), el("span", { className: "v" }, says), el("span", { className: "k" }, copy.rel), dest),
-        el("div", { className: "why" }, copy.why),
-        el("div", { className: "foot" }, copy.foot),
+        el("div", { className: "eyebrow" }, tr("near.eyebrow")),
+        el("div", { className: "title" }, tr(copy.title)),
+        el("div", { className: "rows" }, el("span", { className: "k" }, tr("near.says")), el("span", { className: "v" }, says), el("span", { className: "k" }, tr(copy.rel)), dest),
+        el("div", { className: "why" }, tr(copy.why)),
+        el("div", { className: "foot" }, tr(copy.foot)),
       );
       card.setAttribute("role", "status");
       nearBox.replaceChildren(hl, card);
@@ -409,65 +436,98 @@ export default defineContentScript({
       }
     }
 
-    function showModal(opts: { url: string; label: string; reason: string; level: "high" | "medium"; proceed: () => void }) {
+    function showModal(opts: { url: string; label: string; why: Why; level: "high" | "medium"; proceed: () => void }) {
       if (modalUp) return;
       modalUp = true;
       hideNear();
       ensureHost();
+      const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       let confirming = false;
       const close = () => {
         modalUp = false;
+        repaintModal = null;
         modalBox.replaceChildren();
+        if (before?.isConnected && before !== document.body) before.focus({ preventScroll: true });
       };
-      const stay = el("button", { className: "go", onclick: close }, "Stay on this page");
-      const anyway = el("button", { className: "quiet" }, "Go there anyway");
+      const title = el("div", { className: "title", id: "oj-cg-title" });
+      const lead = el("div", { className: "label", id: "oj-cg-lead" });
+      const dest = attrs(destLine(opts.url), { id: "oj-cg-dest" });
+      const why = el("div", { className: "why", id: "oj-cg-why" });
+      const foot = el("div", { className: "foot" });
+      const stay = el("button", { className: "go", onclick: close });
+      const anyway = el("button", { className: "quiet" });
+      const paint = () => {
+        title.textContent = tr(opts.level === "high" ? "modal.high" : "modal.medium");
+        lead.textContent = opts.label ? tr("modal.youClicked", { label: quote(opts.label.slice(0, 60)) }) : tr("modal.wouldTake");
+        why.replaceChildren(attrs(el("span", {}, "⚑ "), { "aria-hidden": "true" }), say(opts.why));
+        stay.textContent = tr("modal.stay");
+        stay.title = tr("modal.stayTip");
+        anyway.textContent = confirming ? tr("modal.confirm", { site: siteOf(opts.url) }) : tr("modal.anyway");
+        anyway.title = tr(confirming ? "modal.confirmTip" : "modal.anywayTip");
+        foot.textContent = tr("modal.foot");
+      };
       anyway.onclick = () => {
         if (opts.level === "high" && !confirming) {
           confirming = true;
           anyway.className = "danger";
-          anyway.textContent = `Yes, go to ${siteOf(opts.url)}`;
+          paint();
           return;
         }
         close();
         opts.proceed();
       };
-      const back = el(
-        "div",
-        { className: "back" },
-        el(
-          "div",
-          { className: `modal ${opts.level}` },
-          el("div", { className: "title" }, opts.level === "high" ? "Stop: that's not where this button should go" : "Check before you go"),
-          opts.label ? el("div", { className: "label" }, `You clicked “${opts.label.slice(0, 60)}”. It would take you to`) : el("div", { className: "label" }, "It would take you to"),
-          destLine(opts.url),
-          el("div", { className: "url" }, opts.url.slice(0, 160)),
-          el("div", { className: "why" }, `⚑ ${opts.reason}`),
-          el("div", { className: "acts" }, stay, anyway),
-          el("div", { className: "foot" }, "Checked on this device by Avaran Click Guard. Nothing was sent anywhere."),
-        ),
-      );
+      const modal = attrs(el("div", { className: `modal ${opts.level}` }, title, lead, dest, el("div", { className: "url" }, opts.url.slice(0, 160)), why, el("div", { className: "acts" }, stay, anyway), foot), {
+        role: "alertdialog",
+        "aria-modal": "true",
+        "aria-labelledby": "oj-cg-title",
+        "aria-describedby": "oj-cg-lead oj-cg-dest oj-cg-why",
+      });
+      const back = el("div", { className: "back" }, modal);
       back.addEventListener("click", (e) => e.target === back && close());
-      back.addEventListener("keydown", (e) => e.key === "Escape" && close());
+      back.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          close();
+          return;
+        }
+        if (e.key !== "Tab") return;
+        const order = [stay, anyway];
+        const at = order.indexOf(shadow.activeElement as HTMLButtonElement);
+        const next = at < 0 ? (e.shiftKey ? order.length - 1 : 0) : (at + (e.shiftKey ? order.length - 1 : 1)) % order.length;
+        e.preventDefault();
+        order[next]?.focus();
+      });
+      paint();
+      repaintModal = paint;
       modalBox.replaceChildren(back);
       stay.focus();
     }
 
-    function showToast(title: string, reason: string, url: string, openable: boolean) {
+    function showToast(kind: "notification" | "popup", why: Why, url: string, openable: boolean) {
       ensureHost();
-      const box = el(
-        "div",
-        { className: "toast" },
-        el("div", { className: "row" }, el("span", { className: "dot" }), el("b", {}, title)),
-        el("div", { className: "why" }, reason),
-        el(
-          "div",
-          { className: "acts" },
-          ...(openable && url ? [el("button", { className: "quiet", onclick: () => (window.open(url, "_blank", "noopener,noreferrer"), toastBox.replaceChildren()) }, `Open ${siteOf(url)} anyway`)] : []),
-          el("button", { onclick: () => toastBox.replaceChildren() }, "OK"),
-        ),
+      const title = el("b");
+      const reason = el("div", { className: "why" });
+      const dismiss = () => toastBox.replaceChildren();
+      const opener = openable && url ? el("button", { className: "quiet", onclick: () => (window.open(url, "_blank", "noopener,noreferrer"), dismiss()) }) : null;
+      const ok = el("button", { onclick: dismiss });
+      const box = attrs(
+        el("div", { className: "toast" }, el("div", { className: "row" }, dot(), title), reason, el("div", { className: "acts" }, ...(opener ? [opener] : []), ok)),
+        { role: "alert" },
       );
+      const paint = () => {
+        title.textContent = tr(kind === "notification" ? "toast.notification" : "toast.popup");
+        reason.textContent = say(why);
+        ok.textContent = tr("toast.ok");
+        if (opener) {
+          opener.textContent = tr("toast.openAnyway", { site: siteOf(url) });
+          opener.title = tr("toast.openAnywayTip");
+        }
+      };
+      paint();
+      repaintToast = () => box.isConnected && paint();
       toastBox.replaceChildren(box);
-      setTimeout(() => box.isConnected && toastBox.replaceChildren(), 12000);
+      setTimeout(() => box.isConnected && dismiss(), 12000);
     }
 
     function renderPill() {
@@ -478,17 +538,18 @@ export default defineContentScript({
       }
       ensureHost();
       const n = items.length;
-      const summary = [n ? `${n} deceptive ${n === 1 ? "button" : "buttons"} on this page` : "", blocked ? `${blocked} blocked` : ""].filter(Boolean).join(" · ");
+      const summary = [n ? tr("pill.deceptive", { count: n }) : "", blocked ? tr("pill.blocked", { count: blocked }) : ""].filter(Boolean).join(" · ");
+      const toggle = n ? attrs(el("button", { onclick: () => ((open = !open), renderPill()), ...(open ? {} : { title: tr("pill.showTip") }) }, open ? tr("pill.hide") : tr("pill.show")), { "aria-expanded": String(open) }) : null;
       const box = el(
         "div",
         { className: "pill" },
         el(
           "div",
           { className: "row" },
-          el("span", { className: "dot" }),
-          el("span", {}, el("b", {}, "Click Guard"), el("span", { className: "dim" }, ` · ${summary}`)),
-          ...(n ? [el("button", { onclick: () => ((open = !open), renderPill()) }, open ? "Hide" : "Show where they go")] : []),
-          el("button", { className: "quiet", title: "Hide for this page", onclick: () => pillBox.replaceChildren() }, "✕"),
+          dot(),
+          el("span", {}, el("b", { title: tr("pill.tip") }, "Click Guard"), el("span", { className: "dim" }, ` · ${summary}`)),
+          ...(toggle ? [toggle] : []),
+          attrs(el("button", { className: "quiet", title: tr("pill.dismiss"), onclick: () => pillBox.replaceChildren() }, "✕"), { "aria-label": tr("pill.dismiss") }),
         ),
       );
       if (open && n) {
@@ -498,19 +559,26 @@ export default defineContentScript({
             el(
               "div",
               { className: `item ${f.verdict.level}` },
-              el("div", { className: "row" }, el("b", {}, `“${(f.label || "(no label)").slice(0, 40)}”`), el("span", { className: "dim" }, "→"), el("span", { className: "mono" }, f.url ? siteOf(f.url) : "unknown")),
-              el("div", { className: "why" }, f.verdict.reason),
+              el(
+                "div",
+                { className: "row" },
+                el("b", {}, quote((f.label || tr("pill.noLabel")).slice(0, 40))),
+                attrs(el("span", { className: "dim" }, "→"), { "aria-hidden": "true" }),
+                el("span", { className: "mono" }, f.url ? siteOf(f.url) : tr("pill.unknown")),
+              ),
+              el("div", { className: "why" }, say(f.verdict)),
               el(
                 "button",
                 {
                   className: "quiet",
+                  title: tr("pill.findTip"),
                   onclick: () => {
                     node.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
                     node.setAttribute("data-oj-click-flash", "");
                     setTimeout(() => node.removeAttribute("data-oj-click-flash"), 1600);
                   },
                 },
-                "Find it",
+                tr("pill.find"),
               ),
             ),
           );
@@ -558,16 +626,19 @@ export default defineContentScript({
         const foreign = handlerUrls.find((u) => siteOf(u) !== pageSite && siteOf(u) !== hrefSite);
         const crossSite = Boolean(hrefSite && hrefSite !== pageSite);
         const overlay = (crossSite || Boolean(foreign)) && isOverlay(it.node);
-        let verdict = judgeElement({ label: it.label, hints: hintsOf(it.node), href: it.href, handlerUrls, overlay }, page);
+        let verdict: Judged = judgeElement({ label: it.label, hints: hintsOf(it.node), href: it.href, handlerUrls, overlay }, page);
         const decoy = verdict.level === "none" && decoys.has(i);
-        if (decoy) verdict = { block: false, level: "medium", kind: "decoy", reason: `One of several “Download” buttons here that lead to different sites. This one goes to ${siteOf(it.href!)}, not this site` };
+        if (decoy) {
+          const to = siteOf(it.href!);
+          verdict = { block: false, level: "medium", kind: "decoy", reason: `One of several “Download” buttons here that lead to different sites. This one goes to ${to}, not this site`, msg: { key: "decoy", vars: { to } } };
+        }
         if (verdict.level === "none") return;
         let kind = verdict.kind ?? "mismatch";
         const url = kind === "extra" ? (foreign ?? "") : crossSite ? it.href! : (foreign ?? it.href ?? "");
         const btn = it.node as HTMLButtonElement;
         if (kind === "dismiss" && it.node.hasAttribute("formaction") && btn.form && btn.type === "submit") {
           kind = "form";
-          verdict = { ...verdict, kind, reason: `“${it.label}” sends this form to ${siteOf(url)}` };
+          verdict = { ...verdict, kind, reason: `“${it.label}” sends this form to ${siteOf(url)}`, msg: { key: "form", vars: { label: it.label, to: siteOf(url) } } };
         }
         next.set(it.node, { flag: { label: it.label, url, verdict, decoy, kind }, overlay });
       });
@@ -578,7 +649,8 @@ export default defineContentScript({
           if (b.hasAttribute("formaction") || learned.has(b) || next.has(b)) return;
           const label = labelOf(b);
           if (!isDismissLabel(label, hintsOf(b)) || !shown(b)) return;
-          next.set(b, { flag: { label, url: action, kind: "form", verdict: { block: true, level: "high", kind: "form", reason: `“${label}” sends this form to ${siteOf(action)}` }, decoy: false }, overlay: false });
+          const to = siteOf(action);
+          next.set(b, { flag: { label, url: action, kind: "form", verdict: { block: true, level: "high", kind: "form", reason: `“${label}” sends this form to ${to}`, msg: { key: "form", vars: { label, to } } }, decoy: false }, overlay: false });
         });
       });
       document.querySelectorAll("iframe").forEach((frame) => {
@@ -586,7 +658,8 @@ export default defineContentScript({
         if (!src || !/^https?:/i.test(src) || siteOf(src) === pageSite || !shown(frame)) return;
         const r = frame.getBoundingClientRect();
         if (r.width * r.height < 40_000 || opacity(frame) >= 0.15) return;
-        next.set(frame, { flag: { label: "", url: src, kind: "frame", verdict: { block: true, level: "high", kind: "frame", reason: `An invisible embedded page from ${siteOf(src)} sits over the content and catches your clicks` }, decoy: false }, overlay: true });
+        const to = siteOf(src);
+        next.set(frame, { flag: { label: "", url: src, kind: "frame", verdict: { block: true, level: "high", kind: "frame", reason: `An invisible embedded page from ${to} sits over the content and catches your clicks`, msg: { key: "frame", vars: { to } } }, decoy: false }, overlay: true });
       });
       for (const [node] of learned) if (!node.isConnected) learned.delete(node);
       for (const [node] of flags) if (!node.isConnected || (!next.has(node) && !learned.has(node))) unmark(node);
@@ -606,13 +679,13 @@ export default defineContentScript({
     ctx.addEventListener(window, "pointerdown", (e: PointerEvent) => e.isTrusted && remember(e.composedPath()[0]), { capture: true });
     ctx.addEventListener(window, "keydown", (e: KeyboardEvent) => e.isTrusted && (e.key === "Enter" || e.key === " ") && remember(document.activeElement), { capture: true });
 
-    function learn(code: ReasonCode, url: string, reason: string) {
+    function learn(code: ReasonCode, url: string, why: Why) {
       const p = pressed && performance.now() - pressed.t < 2500 ? pressed : null;
       pressed = null;
       if (!p || code === "plain") return;
       const node = code === "overlay" ? (p.clicky ?? p.hit) : p.clicky;
       if (!node || !node.isConnected || flags.has(node) || node === document.body || node === document.documentElement) return;
-      const flag: Flag = { label: labelOf(node), url, verdict: { block: true, level: "high", kind: "learned", reason }, decoy: false, kind: code === "overlay" ? "overlay" : "learned" };
+      const flag: Flag = { label: labelOf(node), url, verdict: { block: true, level: "high", kind: "learned", reason: why.reason, msg: why.msg }, decoy: false, kind: code === "overlay" ? "overlay" : "learned" };
       learned.set(node, flag);
       mark(node, flag, code === "overlay");
       rebuildTargets();
@@ -635,17 +708,17 @@ export default defineContentScript({
       const label = labelOf(a);
       const flag = flags.get(a);
       const overlay = /^https?:/i.test(a.href) && siteOf(a.href) !== siteOf(location.href) && isOverlay(a);
-      const verdict = judgeElement({ label, hints: hintsOf(a), href: a.href, handlerUrls: [], overlay }, location.href);
+      const verdict: Judged = judgeElement({ label, hints: hintsOf(a), href: a.href, handlerUrls: [], overlay }, location.href);
       const stop = verdict.block ? verdict : flag?.decoy ? flag.verdict : null;
       if (!stop) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       const newTab = a.target === "_blank" || e.ctrlKey || e.metaKey || e.button === 1;
-      log("link", a.href, label, stop.reason);
+      log("link", a.href, label, stop);
       showModal({
         url: a.href,
         label,
-        reason: stop.reason,
+        why: stop,
         level: stop.level === "high" ? "high" : "medium",
         proceed: () => (newTab ? window.open(a.href, "_blank", "noopener,noreferrer") : location.assign(a.href)),
       });
@@ -664,12 +737,12 @@ export default defineContentScript({
       if (!isDismissLabel(label, hintsOf(submitter))) return;
       ev.preventDefault();
       ev.stopImmediatePropagation();
-      const reason = `“${label}” would send this form to ${siteOf(action)}`;
-      log("form", action, label, reason);
+      const why: Why = { reason: `“${label}” would send this form to ${siteOf(action)}`, msg: { key: "formWould", vars: { label, to: siteOf(action) } } };
+      log("form", action, label, why);
       showModal({
         url: action,
         label,
-        reason,
+        why,
         level: "high",
         proceed: () => {
           if (own) form.setAttribute("action", action);
@@ -687,23 +760,37 @@ export default defineContentScript({
       const label = typeof d.label === "string" ? d.label.slice(0, 80) : "";
       const code: ReasonCode = d.code === "dismiss" || d.code === "overlay" || d.code === "extra" ? d.code : "plain";
       const from = typeof d.from === "string" && /^https?:/i.test(d.from) ? siteOf(d.from) : "";
+      const whyFor = (): Why => ({ reason: reasonFor(code, label, siteOf(url), from), msg: { key: code, vars: { label, to: siteOf(url), from } } });
       if (d.kind === "notification") {
-        const reason = "This page tells you to click “Allow” so it can send you spam and scam pop-ups. Avaran answered for you: not allowed.";
-        log("notification", location.href, "", reason);
-        showToast("Blocked a notification trick", reason, "", false);
+        const why: Why = { reason: "This page tells you to click “Allow” so it can send you spam and scam pop-ups. Avaran answered for you: not allowed.", msg: { key: "notification" } };
+        log("notification", location.href, "", why);
+        showToast("notification", why, "", false);
       } else if (url && d.kind === "popup") {
-        const reason = reasonFor(code, label, siteOf(url), from);
-        log("popup", url, label, reason);
-        showToast("Blocked a hidden pop-up", reason, url, true);
-        learn(code, url, reason);
+        const why = whyFor();
+        log("popup", url, label, why);
+        showToast("popup", why, url, true);
+        learn(code, url, why);
       } else if (url && d.kind === "navigate") {
-        const reason = reasonFor(code, label, siteOf(url), from);
-        log("redirect", url, label, reason);
-        showModal({ url, label, reason, level: "high", proceed: () => location.assign(url) });
-        learn(code, url, reason);
+        const why = whyFor();
+        log("redirect", url, label, why);
+        showModal({ url, label, why, level: "high", proceed: () => location.assign(url) });
+        learn(code, url, why);
       }
       renderPill();
     });
+
+    const setLocale = (next: Locale) => {
+      if (next === locale) return;
+      locale = next;
+      tr = translator(GUARD, next);
+      renderPill();
+      hideNear();
+      frame();
+      repaintModal?.();
+      repaintToast?.();
+    };
+    getLocale().then(setLocale);
+    const offLocale = onLocaleChange(setLocale);
 
     let timer = 0;
     const schedule = () => {
@@ -732,6 +819,7 @@ export default defineContentScript({
     else start();
     window.addEventListener("load", schedule, { once: true });
     ctx.onInvalidated(() => {
+      offLocale();
       observer.disconnect();
       arm(false);
       host.remove();

@@ -20,6 +20,8 @@ import {
   type RedactionSummary,
   type Sealed,
 } from "@oj/core";
+import { translator, type Locale } from "@oj/core/i18n";
+import { SEAL } from "@/locales/seal";
 import { APP_URL, ApiError, apiFetch, lookupTxt, postJson } from "./api";
 import type { VaultResult } from "./messages";
 
@@ -41,13 +43,7 @@ export type Recipient =
 
 export type Stage = "reserving" | "encrypting" | "uploading" | "finalizing" | "done";
 
-export const STAGE_LABEL: Record<Stage, string> = {
-  reserving: "Reserving a sealed slot…",
-  encrypting: "Encrypting here · ML-KEM-768 + X25519 → AES-256-GCM",
-  uploading: "Uploading ciphertext only…",
-  finalizing: "Checking the server's ML-DSA receipt…",
-  done: "Sealed ✓",
-};
+export const stageLabel = (stage: Stage, locale: Locale = "en") => translator(SEAL, locale)(`stage.${stage}`);
 
 export interface SentItem extends VaultResult {
   id: string;

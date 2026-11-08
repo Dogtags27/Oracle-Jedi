@@ -1,11 +1,13 @@
+import { systemLocale, translator, type KeyOf, type Locale } from "@oj/core/i18n";
 import { ADAPTERS, compileCss, hiddenCount, veilBoxes, type Adapter } from "@/lib/sheathe-adapters";
 import type { TabMessage } from "@/lib/messages";
+import { getLocale, onLocaleChange } from "@/lib/locale";
+import { SHEATHE } from "@/locales/sheathe";
 import {
   ALLOW_KEY,
   OFF,
   SETTINGS_KEY,
   STATE_KEY,
-  SURFACE_LABEL,
   loadAllow,
   loadSettings,
   loadState,
@@ -14,10 +16,19 @@ import {
   onScreen,
   privateHere,
   shouldShield,
+  surfaceLabel,
   type AllowLists,
   type SheatheSettings,
   type SheatheState,
+  type SiteId,
 } from "@/lib/sheathe";
+
+type Key = KeyOf<typeof SHEATHE>;
+
+const ITEM: Record<SiteId, { reveal: Key; hide: Key; hideOne: Key; hideAllTip: Key }> = {
+  whatsapp: { reveal: "pill.reveal.chat", hide: "pill.hide.chat", hideOne: "pill.hideOne.chat", hideAllTip: "pill.hideAllTip.chat" },
+  gmail: { reveal: "pill.reveal.email", hide: "pill.hide.email", hideOne: "pill.hideOne.email", hideAllTip: "pill.hideAllTip.email" },
+};
 
 const PILL_CSS = `
 :host{all:initial}
@@ -56,6 +67,9 @@ export default defineContentScript({
     const root = document.documentElement;
     root.setAttribute("data-oj-sheathe", "on");
     root.setAttribute("data-oj-layer", "full");
+    let locale: Locale = systemLocale();
+    let tr = translator(SHEATHE, locale);
+    root.setAttribute("data-oj-lang", locale);
 
     let handle: string | null = null;
     try {
@@ -144,55 +158,63 @@ export default defineContentScript({
       const host = el("oj-sheathe-pill" as "div");
       const shadow = host.attachShadow({ mode: "closed" });
       const box = el("div", { className: "p" });
+      box.setAttribute("role", "region");
       shadow.append(el("style", { textContent: PILL_CSS }), box);
+      const dot = () => {
+        const d = el("span", { className: "dot" });
+        d.setAttribute("aria-hidden", "true");
+        return d;
+      };
+      let lastKey = "";
+      let dimNode: HTMLElement | null = null;
       const render = () => {
         const on = active() || privateMode();
         if (!on && !paused) {
           host.remove();
+          lastKey = "";
           return;
         }
         if (!host.isConnected) root.append(host);
         box.className = state.mode === "panic" ? "p panic" : "p";
-        box.replaceChildren();
+        box.setAttribute("aria-label", tr("pill.name"));
         if (paused) {
-          box.append(
-            el("span", { className: "dot" }),
-            el("span", {}, el("b", {}, "Sheathe paused"), el("span", { className: "dim" }, " · this tab is visible")),
-            el("button", { className: "go", onclick: () => ((paused = false), apply()) }, "Resume"),
+          const key = `paused|${locale}`;
+          if (key === lastKey) return;
+          lastKey = key;
+          dimNode = null;
+          box.replaceChildren(
+            dot(),
+            el("span", {}, el("b", {}, tr("pill.paused")), el("span", { className: "dim" }, ` · ${tr("pill.pausedNote")}`)),
+            el("button", { className: "go", title: tr("pill.resumeTip"), onclick: () => ((paused = false), apply()) }, tr("pill.resume")),
           );
           return;
         }
         const what = privateMode()
-          ? "Private view: you see this tab, the meeting sees a veil"
+          ? tr("pill.private")
           : state.mode === "panic"
-            ? "Panic: everything hidden"
+            ? tr("pill.panic")
             : state.mode === "manual"
-              ? "Sheathed by you"
+              ? tr("pill.manual")
               : state.mode === "arming"
-                ? "Sheathed: share picker open"
+                ? tr("pill.arming")
                 : state.mode === "call"
-                  ? "Sheathed: you're in a call"
-                  : `Sheathed: ${SURFACE_LABEL[state.surface ?? "unknown"]}`;
+                  ? tr("pill.call")
+                  : tr("pill.sharing", { surface: surfaceLabel(state.surface ?? "unknown", locale) });
         const current = adapter!.current();
         const isAllowed = current ? allowed().has(current) : false;
         const where = onScreen(state, handle);
-        box.append(
-          el("span", { className: "dot" }),
-          el(
-            "span",
-            {},
-            el("b", {}, what),
-            el(
-              "span",
-              { className: "dim" },
-              privateMode()
-                ? ""
-                : where === "no"
-                  ? " · this tab isn't in the share, veiled in case you switch"
-                  : ` · ${hiddenCount(adapter!, settings)} items hidden`,
-            ),
-          ),
-        );
+        const dim = privateMode() ? "" : where === "no" ? ` · ${tr("pill.notShared")}` : ` · ${tr("pill.hidden", { n: hiddenCount(adapter!, settings) })}`;
+        const revealed = allowed().size;
+        const tip = state.mode === "sharing" && state.surface === "monitor";
+        const key = JSON.stringify([locale, state.mode, what, current, isAllowed, revealed, tip]);
+        if (key === lastKey && dimNode) {
+          if (dimNode.textContent !== dim) dimNode.textContent = dim;
+          return;
+        }
+        lastKey = key;
+        const item = ITEM[adapter!.id];
+        dimNode = el("span", { className: "dim" }, dim);
+        box.replaceChildren(dot(), el("span", {}, el("b", {}, what), dimNode));
         if (state.mode !== "panic") {
           if (current) {
             box.append(
@@ -200,31 +222,22 @@ export default defineContentScript({
                 "button",
                 {
                   className: isAllowed ? "" : "go",
-                  title: isAllowed ? `Hide "${current}" again` : `Show "${current}" for the rest of this meeting`,
+                  title: isAllowed ? tr("pill.hideTip", { item: current }) : tr("pill.revealTip", { item: current }),
                   onclick: () => toggleAllow(current),
                 },
-                isAllowed ? `Hide this ${adapter!.item.label}` : `Reveal this ${adapter!.item.label}`,
+                isAllowed ? tr(item.hide) : tr(item.reveal),
               ),
             );
           }
-          const revealed = allowed().size;
           if (revealed > (isAllowed ? 1 : 0)) {
-            box.append(
-              el(
-                "button",
-                { title: `Blur every ${adapter!.item.label} you revealed in this meeting`, onclick: hideAll },
-                revealed === 1 ? `Hide the revealed ${adapter!.item.label}` : `Hide all ${revealed} revealed`,
-              ),
-            );
+            box.append(el("button", { title: tr(item.hideAllTip), onclick: hideAll }, revealed === 1 ? tr(item.hideOne) : tr("pill.hideAll", { n: revealed })));
           }
           box.append(
-            el("button", { title: "Show everything for 10 seconds", onclick: peek }, "Show 10 s"),
-            el("button", { title: "Stop sheathing this tab until the share ends", onclick: () => ((paused = true), apply()) }, "Pause"),
+            el("button", { title: tr("pill.peekTip"), onclick: peek }, tr("pill.peek")),
+            el("button", { title: tr("pill.pauseTip"), onclick: () => ((paused = true), apply()) }, tr("pill.pause")),
           );
         }
-        if (state.mode === "sharing" && state.surface === "monitor") {
-          box.append(el("span", { className: "tip" }, "Tip: share a single tab instead. Blur can't cover your address bar, tab previews or other apps."));
-        }
+        if (tip) box.append(el("span", { className: "tip" }, tr("pill.monitorTip")));
       };
       pill = { host, render };
     }
@@ -258,9 +271,19 @@ export default defineContentScript({
       apply();
     }
 
+    const setLocale = (next: Locale) => {
+      locale = next;
+      tr = translator(SHEATHE, next);
+      root.setAttribute("data-oj-lang", next);
+      pill?.render();
+    };
+
     mountPill();
-    [state, settings, allow] = await Promise.all([loadState(), loadSettings(), loadAllow()]);
+    let saved: Locale;
+    [state, settings, allow, saved] = await Promise.all([loadState(), loadSettings(), loadAllow(), getLocale()]);
+    setLocale(saved);
     apply();
+    const offLocale = onLocaleChange(setLocale);
 
     const onStorage = (changes: Record<string, { newValue?: unknown }>, area: string) => {
       if (area !== "local") return;
@@ -308,6 +331,7 @@ export default defineContentScript({
     if (handle) browser.runtime.sendMessage({ type: "sheathe:hello", handle }).catch(() => {});
 
     ctx.onInvalidated(() => {
+      offLocale();
       browser.storage.onChanged.removeListener(onStorage);
       observer.disconnect();
       clearInterval(ticker);
@@ -318,6 +342,7 @@ export default defineContentScript({
       pill?.host.remove();
       root.removeAttribute("data-oj-sheathe");
       root.removeAttribute("data-oj-layer");
+      root.removeAttribute("data-oj-lang");
     });
   },
 });

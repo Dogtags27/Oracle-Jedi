@@ -1,4 +1,6 @@
+import { isLocale, type Locale } from "@oj/core/i18n";
 import { MEETING_MATCHES } from "@/lib/sheathe";
+import { SHEATHE_PAGE } from "@/locales/sheathe-page";
 
 type Box = [number, number, number, number];
 type Track = MediaStreamTrack & { getCaptureHandle?: () => { handle?: string } | null };
@@ -21,12 +23,16 @@ export default defineContentScript({
     let seq = 0;
     const nextId = () => `${Date.now().toString(36)}-${(++seq).toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     let privateView = false;
+    let locale: Locale = "en";
     const veils = new Map<string, { boxes: Box[] | null; at: number }>();
 
     window.addEventListener("message", (e: MessageEvent) => {
       if (e.source !== window) return;
-      const d = e.data as { __oj_sheathe_cfg?: number; privateView?: boolean; __oj_sheathe_veil?: number; handle?: string; boxes?: Box[]; none?: boolean } | null;
-      if (d?.__oj_sheathe_cfg === 1) privateView = d.privateView === true;
+      const d = e.data as { __oj_sheathe_cfg?: number; privateView?: boolean; locale?: unknown; __oj_sheathe_veil?: number; handle?: string; boxes?: Box[]; none?: boolean } | null;
+      if (d?.__oj_sheathe_cfg === 1) {
+        privateView = d.privateView === true;
+        if (isLocale(d.locale)) locale = d.locale;
+      }
       if (d?.__oj_sheathe_veil === 1 && typeof d.handle === "string") {
         const boxes = d.none ? null : Array.isArray(d.boxes) ? d.boxes.slice(0, 40).filter((b) => Array.isArray(b) && b.length === 4 && b.every(Number.isFinite)) : [];
         veils.set(d.handle, { boxes, at: performance.now() });
@@ -125,7 +131,8 @@ export default defineContentScript({
         ctx.drawImage(raw, 0, 0);
         const boxes = plan() ?? [];
         const whole = boxes.length === 1 && boxes[0]![2] >= 1 && boxes[0]![3] >= 1;
-        for (const b of boxes) cover(fw, fh, b, whole ? "Veiled by Avaran" : "Private · veiled by Avaran");
+        const label = SHEATHE_PAGE[locale][whole ? "veil.all" : "veil.part"];
+        for (const b of boxes) cover(fw, fh, b, label);
         lastTs = Math.max(lastTs + 1000, Math.round(performance.now() * 1000));
         const next = new VideoFrame(canvas, { timestamp: lastTs });
         lastWrite = performance.now();

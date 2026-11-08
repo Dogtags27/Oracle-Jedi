@@ -115,3 +115,9 @@
 .dest b { color: #1e1b17; font-size: 17px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .modal .foot { margin-top: 14px; }
+.langbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: #4b443b; }
+.lang { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; background: #eef0f7; color: #2b3666; border: 1px solid #bcc3e0; font-weight: 500; cursor: help; }
+.lang svg { width: 12px; height: 12px; }
+.oj button:focus-visible, .oj a:focus-visible, .oj [tabindex]:focus-visible { outline: 2px solid #36437e; outline-offset: 2px; }
+.dot[tabindex] { cursor: help; }
+@media (prefers-reduced-motion: reduce) { .dot.pulse { animation: none; } }

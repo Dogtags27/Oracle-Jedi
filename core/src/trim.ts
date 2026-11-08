@@ -4,6 +4,10 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { PDFDocument } from "pdf-lib";
 import { SENSITIVE_KINDS, countKinds, detect, redactText } from "./detect";
 import type { Finding, FindingKind, RedactionSummary } from "./types";
+import { detectLanguage } from "./i18n/lang";
+import type { Locale } from "./i18n";
+
+export type TrimNote = "scan" | "pdfMetadata" | "photo" | "exif" | "unsupported";
 
 export type TrimKind = "pdf" | "image" | "text" | "other";
 
@@ -43,6 +47,8 @@ export interface TrimDoc {
   marks: Mark[];
   text?: string;
   notes: string[];
+  noteKeys: TrimNote[];
+  language: Locale | null;
   hasMetadata: boolean;
 }
 
@@ -191,7 +197,11 @@ const markFrom = (f: Finding, page: number, rects: Rect[]): Mark => ({
 
 export async function analyzeFile(name: string, type: string, bytes: Uint8Array): Promise<TrimDoc> {
   const kind = kindOf(name, type);
-  const doc: TrimDoc = { id: newId(), kind, name, type: type || "application/octet-stream", bytes, pages: [], marks: [], notes: [], hasMetadata: false };
+  const doc: TrimDoc = { id: newId(), kind, name, type: type || "application/octet-stream", bytes, pages: [], marks: [], notes: [], noteKeys: [], language: null, hasMetadata: false };
+  const note = (key: TrimNote, text: string) => {
+    doc.noteKeys.push(key);
+    doc.notes.push(text);
+  };
   if (kind === "pdf") {
     const loading = loadPdf(bytes);
     pdfs.set(doc.id, loading);
@@ -206,26 +216,28 @@ export async function analyzeFile(name: string, type: string, bytes: Uint8Array)
       const items = content.items.filter((it): it is TextItem => "str" in it);
       const { text, spans } = layoutText(items, vp.transform, content.styles as Record<string, { fontFamily?: string }>);
       textChars += text.trim().length;
-      for (const f of detect(text)) {
+      if (!doc.language) doc.language = detectLanguage(text).lang;
+      for (const f of detect(text, undefined, doc.language ?? undefined)) {
         const rects = rectsFor(f.start, f.end, spans);
         if (rects.length) doc.marks.push(markFrom(f, i - 1, rects));
       }
     }
-    if (textChars === 0) doc.notes.push("This PDF looks like a scan (no text layer). Draw boxes over anything they don't need.");
-    if (doc.hasMetadata) doc.notes.push("Document properties (author, software, dates) will be removed.");
+    if (textChars === 0) note("scan", "This PDF looks like a scan (no text layer). Draw boxes over anything they don't need.");
+    if (doc.hasMetadata) note("pdfMetadata", "Document properties (author, software, dates) will be removed.");
   } else if (kind === "image") {
     const bitmap = await createImageBitmap(new Blob([bytes as BlobPart], { type: doc.type }));
     doc.pages.push({ index: 0, width: bitmap.width, height: bitmap.height });
     bitmap.close();
     doc.hasMetadata = hasExif(bytes);
-    doc.notes.push("Photos have no readable text here. Draw boxes over anything they don't need.");
-    if (doc.hasMetadata) doc.notes.push("Camera metadata (it can include GPS location) will be removed.");
+    note("photo", "Photos have no readable text here. Draw boxes over anything they don't need.");
+    if (doc.hasMetadata) note("exif", "Camera metadata (it can include GPS location) will be removed.");
   } else if (kind === "text") {
     doc.text = new TextDecoder().decode(bytes);
     doc.pages.push({ index: 0, width: 0, height: 0 });
-    doc.marks = detect(doc.text).map((f) => markFrom(f, 0, []));
+    doc.language = detectLanguage(doc.text).lang;
+    doc.marks = detect(doc.text, undefined, doc.language).map((f) => markFrom(f, 0, []));
   } else {
-    doc.notes.push("Avaran can't look inside this file type, so it will be sealed exactly as it is.");
+    note("unsupported", "Avaran can't look inside this file type, so it will be sealed exactly as it is.");
   }
   return doc;
 }

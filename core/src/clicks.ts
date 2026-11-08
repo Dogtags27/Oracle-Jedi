@@ -1,3 +1,5 @@
+import type { ClickMsg } from "./findings";
+
 const TWO_PART = new Set([
   "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "ltd.uk", "co.jp", "ne.jp", "or.jp", "com.au", "net.au", "org.au", "edu.au", "co.nz",
   "com.br", "com.mx", "com.ar", "com.tr", "com.cn", "com.hk", "com.sg", "com.tw", "co.in", "co.za", "co.kr", "co.il", "com.my", "com.ph",
@@ -30,23 +32,31 @@ export const normalizeLabel = (s: string) =>
 
 const DISMISS_EXACT =
   /^(?:x|×|✕|✖|✗|╳|close|close ad|close this|close window|close x|cancel|dismiss|no|nope|no thanks|no, thanks|no thank you|not now|maybe later|later|skip|skip ad|skip this|decline|reject|reject all|back|go back|exit|stop|not interested|i'm not interested|i am not interested|no, take me back|continue without|unsubscribe)$/;
+const DISMISS_EXACT_INTL =
+  /^(?:cerrar|cerrar anuncio|cancelar|descartar|no, gracias|no gracias|ahora no|quizás más tarde|más tarde|omitir|omitir anuncio|saltar|rechazar|rechazar todo|volver|salir|no me interesa|continuar sin aceptar|fermer|fermer la publicité|annuler|ignorer|non|non merci|non, merci|pas maintenant|plus tard|passer|passer la pub|refuser|tout refuser|retour|quitter|ça ne m'intéresse pas|continuer sans accepter|schließen|werbung schließen|abbrechen|nein|nein danke|nein, danke|nicht jetzt|später|vielleicht später|überspringen|ablehnen|alle ablehnen|zurück|beenden|kein interesse|ohne zustimmung fortfahren|fechar|fechar anúncio|cancelar|dispensar|não|não, obrigado|não obrigado|não, obrigada|agora não|mais tarde|talvez mais tarde|pular|ignorar|recusar|rejeitar tudo|voltar|sair|não tenho interesse|continuar sem aceitar)$/u;
 const DISMISS_WORDS = /\b(close|cancel|dismiss|no thanks|no, thanks|not now|skip|decline|reject|not interested|go back)\b/;
+const DISMISS_WORDS_INTL =
+  /(?<![\p{L}\p{N}])(cerrar|cancelar|no,? gracias|ahora no|omitir|rechazar|no me interesa|fermer|annuler|non,? merci|pas maintenant|refuser|schließen|abbrechen|nein,? danke|nicht jetzt|überspringen|ablehnen|kein interesse|fechar|não,? obrigad[oa]|agora não|pular|recusar)(?![\p{L}\p{N}])/u;
 const DISMISS_HINT = /(^|[-_\s])(close|closer|dismiss|cancel|btn-x|icon-x|x-btn|modal-x)([-_\s]|btn|button|icon|$)/i;
 
 export function isDismissLabel(label: string, hints = ""): boolean {
   const l = normalizeLabel(label);
-  if (DISMISS_EXACT.test(l)) return true;
-  if (l.length > 0 && l.length <= 28 && DISMISS_WORDS.test(l)) return true;
+  if (DISMISS_EXACT.test(l) || DISMISS_EXACT_INTL.test(l)) return true;
+  if (l.length > 0 && l.length <= 28 && (DISMISS_WORDS.test(l) || DISMISS_WORDS_INTL.test(l))) return true;
   return l.length <= 2 && DISMISS_HINT.test(hints);
 }
 
 export const isDownloadLabel = (label: string) => {
   const l = normalizeLabel(label);
-  return l.length <= 40 && /\b(download|start download|download now|free download|get it now|install now|play now|watch now|stream now)\b/.test(l);
+  return (
+    l.length <= 40 &&
+    (/\b(download|start download|download now|free download|get it now|install now|play now|watch now|stream now)\b/.test(l) ||
+      /(?<![\p{L}\p{N}])(descargar|descarga gratis|descargar ahora|instalar ahora|jugar ahora|ver ahora|télécharger|téléchargement gratuit|installer|jouer maintenant|regarder maintenant|herunterladen|jetzt herunterladen|kostenlos herunterladen|download starten|jetzt installieren|jetzt spielen|jetzt ansehen|baixar|baixar agora|baixar grátis|transferir|instalar agora|jogar agora|assistir agora)(?![\p{L}\p{N}])/u.test(l))
+  );
 };
 
 export const BAIT =
-  /\b(click|press|tap|hit|select)\s+(on\s+)?["“'‘]?allow\b|verify (that )?you('re| are) (not a robot|a human|human)|\bnot a robot\b|to (continue|watch|download|play|access|verify)[^.\n]{0,50}\ballow\b/i;
+  /\b(click|press|tap|hit|select)\s+(on\s+)?["“'‘]?allow\b|verify (that )?you('re| are) (not a robot|a human|human)|\bnot a robot\b|to (continue|watch|download|play|access|verify)[^.\n]{0,50}\ballow\b|(haga clic|pulse|toque|presione|cliquez|appuyez|klicken sie|tippen sie|clique|toque)\s+(en|sur|auf|em)\s+["“'‘«„]?\s?(permitir|autoriser|zulassen|erlauben)|no soy un robot|je ne suis pas un robot|ich bin kein roboter|não sou um robô|(para|pour|um|para) (continuar|ver|descargar|continuer|regarder|télécharger|fortzufahren|anzusehen|herunterzuladen|assistir|baixar)[^.\n]{0,50}(permitir|autoriser|zulassen|erlauben)/iu;
 
 const URL_IN_CODE = /https?:\/\/[^\s'"`)<>\\]+/g;
 
@@ -116,25 +126,60 @@ export interface Verdict {
   reason: string;
   code?: ReasonCode;
   kind?: FlagKind;
+  msg?: ClickMsg;
 }
 
-const ALLOW: Verdict = { block: false, level: "none", reason: "" };
-const quote = (label: string) => {
+const quote = (label = "") => {
   const l = label.replace(/\s+/g, " ").trim();
   return l ? `“${l.length > 32 ? `${l.slice(0, 31)}…` : l}”` : "this button";
 };
 
-export function reasonFor(code: ReasonCode, label: string, to: string, from = ""): string {
-  switch (code) {
+export function englishClick({ key, vars = {} }: ClickMsg): string {
+  const { to = "", from = "", shown = "", host = "", other = "" } = vars;
+  switch (key) {
     case "dismiss":
-      return `${quote(label)} should close something, but it tried to take you to ${to}`;
+      return `${quote(vars.label)} should close something, but it tried to take you to ${to}`;
     case "overlay":
       return `An invisible layer over the page caught your click and tried to open ${to}`;
     case "extra":
       return `The link goes to ${from || "this site"}, but clicking it also tried to open ${to}`;
-    default:
+    case "plain":
       return `Clicking ordinary page content tried to open ${to}`;
+    case "doc":
+      return "This link opens a hidden document instead of a website";
+    case "dismissStatic":
+      return `${quote(vars.label)} looks like it closes something, but it takes you to ${to}`;
+    case "overlayStatic":
+      return `An invisible link laid over the page sends clicks to ${to}`;
+    case "mismatch":
+      return `Shows ${shown} but actually goes to ${to}`;
+    case "userinfo":
+      return `Everything before “@” is a decoy: it goes to ${host}`;
+    case "punycode":
+      return `Uses look-alike characters in the address (${host})`;
+    case "extraStatic":
+      return `It links to ${to}, but clicking it also opens ${other}`;
+    case "decoy":
+      return `One of several “Download” buttons here that lead to different sites. This one goes to ${to}, not this site`;
+    case "form":
+      return `${quote(vars.label)} sends this form to ${to}`;
+    case "formWould":
+      return `${quote(vars.label)} would send this form to ${to}`;
+    case "frame":
+      return `An invisible embedded page from ${to} sits over the content and catches your clicks`;
+    case "notification":
+      return "This page tells you to click “Allow” so it can send you spam and scam pop-ups. Avaran answered for you: not allowed.";
   }
+}
+
+const said = (msg: ClickMsg) => ({ msg, reason: englishClick(msg) });
+
+const ALLOW: Verdict = { block: false, level: "none", reason: "" };
+export const reasonMsg = (code: ReasonCode, label: string, to: string, from = ""): ClickMsg =>
+  code === "dismiss" ? { key: "dismiss", vars: { label, to } } : code === "extra" ? { key: "extra", vars: { from, to } } : { key: code, vars: { to } };
+
+export function reasonFor(code: ReasonCode, label: string, to: string, from = ""): string {
+  return englishClick(reasonMsg(code, label, to, from));
 }
 
 export function judgeOpen(dest: string, page: string, click: ClickContext | null): Verdict {
@@ -152,7 +197,7 @@ export function judgeOpen(dest: string, page: string, click: ClickContext | null
         : !click.looksClickable
           ? "plain"
           : null;
-  return code ? { block: true, level: "high", code, reason: reasonFor(code, click.label, to, from) } : ALLOW;
+  return code ? { block: true, level: "high", code, ...said(reasonMsg(code, click.label, to, from)) } : ALLOW;
 }
 
 export interface StaticCheck {
@@ -168,23 +213,23 @@ export function judgeElement(el: StaticCheck, page: string): Verdict {
   const hrefSite = el.href && /^https?:/i.test(el.href) ? siteOf(el.href) : null;
   const foreignHandler = el.handlerUrls.map(siteOf).find((s) => s !== pageSite && s !== hrefSite);
   if (el.href && /^(data|vbscript):/i.test(el.href)) {
-    return { block: true, level: "high", kind: "doc", reason: "This link opens a hidden document instead of a website" };
+    return { block: true, level: "high", kind: "doc", ...said({ key: "doc" }) };
   }
   const dest = hrefSite && hrefSite !== pageSite ? hrefSite : (foreignHandler ?? null);
-  if (dest && isDismissLabel(el.label, el.hints)) return { block: true, level: "high", kind: "dismiss", reason: `${quote(el.label)} looks like it closes something, but it takes you to ${dest}` };
-  if (dest && el.overlay) return { block: true, level: "high", kind: "overlay", reason: `An invisible link laid over the page sends clicks to ${dest}` };
+  if (dest && isDismissLabel(el.label, el.hints)) return { block: true, level: "high", kind: "dismiss", ...said({ key: "dismissStatic", vars: { label: el.label, to: dest } }) };
+  if (dest && el.overlay) return { block: true, level: "high", kind: "overlay", ...said({ key: "overlayStatic", vars: { to: dest } }) };
   const shown = shownSite(el.label);
-  if (hrefSite && shown && shown !== hrefSite) return { block: true, level: "high", kind: "mismatch", reason: `Shows ${shown} but actually goes to ${hrefSite}` };
+  if (hrefSite && shown && shown !== hrefSite) return { block: true, level: "high", kind: "mismatch", ...said({ key: "mismatch", vars: { shown, to: hrefSite } }) };
   if (el.href) {
     try {
       const u = new URL(el.href);
-      if (/^https?:$/.test(u.protocol) && (u.username || u.password)) return { block: true, level: "high", kind: "mismatch", reason: `Everything before “@” is a decoy: it goes to ${u.hostname}` };
-      if (/^https?:$/.test(u.protocol) && u.hostname.split(".").some((p) => p.startsWith("xn--"))) return { block: false, level: "medium", kind: "lookalike", reason: `Uses look-alike characters in the address (${u.hostname})` };
+      if (/^https?:$/.test(u.protocol) && (u.username || u.password)) return { block: true, level: "high", kind: "mismatch", ...said({ key: "userinfo", vars: { host: u.hostname } }) };
+      if (/^https?:$/.test(u.protocol) && u.hostname.split(".").some((p) => p.startsWith("xn--"))) return { block: false, level: "medium", kind: "lookalike", ...said({ key: "punycode", vars: { host: u.hostname } }) };
     } catch {
       return ALLOW;
     }
   }
-  if (foreignHandler && hrefSite) return { block: false, level: "medium", kind: "extra", reason: `It links to ${hrefSite}, but clicking it also opens ${foreignHandler}` };
+  if (foreignHandler && hrefSite) return { block: false, level: "medium", kind: "extra", ...said({ key: "extraStatic", vars: { to: hrefSite, other: foreignHandler } }) };
   return ALLOW;
 }
 

@@ -1,14 +1,27 @@
 import { useEffect, useState } from "react";
 import type { CheckResponse } from "@oj/core";
+import { languageName, translator } from "@oj/core/i18n";
+import { Tip, useContentLocale, useFormat, useT } from "@oj/core/i18n/react";
+import {
+  FINDINGS,
+  attachmentReason,
+  checkExplanation,
+  credentialLabel,
+  isGoodSignal,
+  itemLabel,
+  linkReasons,
+  pressureLabel,
+  signalText,
+} from "@oj/core/findings";
 import { safeHttpUrl } from "@/lib/api";
 import { riskyLinks, type Scan } from "./scan";
 
 type Status = "idle" | "checking" | "done" | "error";
 
 const LOOK = {
-  verified: { cls: "verified", icon: "✓", title: "Verified" },
-  mismatch: { cls: "mismatch", icon: "✕", title: "Doesn't match" },
-  unknown: { cls: "unknown", icon: "?", title: "Unknown" },
+  verified: { cls: "verified", icon: "✓" },
+  mismatch: { cls: "mismatch", icon: "✕" },
+  unknown: { cls: "unknown", icon: "?" },
 };
 
 function Host({ host, domain }: { host: string; domain: string }) {
@@ -19,6 +32,23 @@ function Host({ host, domain }: { host: string; domain: string }) {
       <b>{domain || host}</b>
     </span>
   );
+}
+
+function Globe() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
+    </svg>
+  );
+}
+
+function signalRows(result: CheckResponse, locale: Parameters<typeof signalText>[1]) {
+  const rows = result.facts
+    ? result.facts.map((f) => ({ text: signalText(f, locale), good: isGoodSignal(result, f) }))
+    : result.signals.map((s) => ({ text: s, good: isGoodSignal(result, s) }));
+  const seen = new Set<string>();
+  return rows.filter((r) => !seen.has(r.text) && Boolean(seen.add(r.text)));
 }
 
 export function Card({
@@ -40,6 +70,11 @@ export function Card({
   const [result, setResult] = useState<CheckResponse | null>(null);
   const [hidden, setHidden] = useState(false);
   const [proof, setProof] = useState(false);
+  const x = scan.request;
+  const content = useContentLocale(x.language);
+  const L = content.locale;
+  const t = useT(FINDINGS, L);
+  const fmt = useFormat(L);
 
   async function run() {
     setStatus("checking");
@@ -60,7 +95,6 @@ export function Card({
 
   if (hidden) return null;
 
-  const x = scan.request;
   const links = riskyLinks(scan, result);
   const highRisk = links.some((l) => l.level === "high") || scan.attachments.some((a) => a.level === "high");
   const look = result ? LOOK[result.verdict] : null;
@@ -68,35 +102,48 @@ export function Card({
   const icon = status === "checking" ? "…" : look ? look.icon : highRisk ? "!" : "?";
   const title =
     status === "checking"
-      ? "Who's asking? Checking the open web…"
-      : look
-        ? look.title
+      ? t("card.checking")
+      : result
+        ? t(`verdict.${result.verdict}`)
         : status === "error"
-          ? "Couldn't check right now: treat it as Unknown"
+          ? t("card.error")
           : highRisk
-            ? "Careful: this email has a trap"
-            : "Who's asking?";
+            ? t("card.trap")
+            : t("card.whoAsking");
   const portal = safeHttpUrl(result?.officialUploadUrl);
+  const switchTo = content.followingContent ? content.uiLocale : content.detected;
+  const switchLabel = switchTo ? translator(FINDINGS, switchTo)("lang.showIn", { language: languageName(switchTo, switchTo) }) : "";
+  const signals = result ? signalRows(result, L) : [];
 
   return (
-    <div className="oj">
-      <div className={`card ${cls}`}>
+    <div className="oj" lang={L}>
+      <div className={`card ${cls}`} role="region" aria-label={`Avaran: ${title}`}>
         <div className="head">
-          <div className={`dot ${cls} ${status === "checking" ? "pulse" : ""}`}>{icon}</div>
-          <div className="grow">
+          {result ? (
+            <Tip text={t(`verdict.${result.verdict}.tip`)}>
+              <div className={`dot ${cls}`} tabIndex={0} role="img" aria-label={title}>
+                {icon}
+              </div>
+            </Tip>
+          ) : (
+            <div className={`dot ${cls} ${status === "checking" ? "pulse" : ""}`} aria-hidden="true">
+              {icon}
+            </div>
+          )}
+          <div className="grow" aria-live="polite">
             <div className="title">{title}</div>
             <div className="sub">
-              Claims to be <b>{x.claimedOrg || "?"}</b>
+              {t("card.claimsToBe")} <b>{x.claimedOrg || "?"}</b>
               {scan.senderEmail && (
                 <>
                   {" "}
-                  · sent from <span className="mono">{scan.senderEmail}</span>
+                  · {t("card.sentFrom")} <span className="mono">{scan.senderEmail}</span>
                 </>
               )}
               {result?.officialDomain && (
                 <>
                   {" "}
-                  · official site <span className="mono accent">{result.officialDomain}</span>
+                  · {t("card.officialSite")} <span className="mono accent">{result.officialDomain}</span>
                 </>
               )}
             </div>
@@ -108,43 +155,62 @@ export function Card({
               <path d="M3 28h26" stroke="#2b3666" strokeWidth="2.6" strokeLinecap="round" />
             </svg>
             Avaran
-            <button className="x" onClick={() => setHidden(true)} aria-label="Dismiss">
-              ✕
-            </button>
+            <Tip text={t("tip.dismiss")}>
+              <button className="x" onClick={() => setHidden(true)} aria-label={t("card.dismiss")}>
+                ✕
+              </button>
+            </Tip>
           </div>
         </div>
 
+        {content.detected && content.canSwitch && (
+          <div className="langbar">
+            <Tip text={t("lang.tip", { language: languageName(content.detected, L) })}>
+              <span className="lang" tabIndex={0}>
+                <Globe />
+                {t("lang.detected", { language: languageName(content.detected, L) })}
+              </span>
+            </Tip>
+            <button className="link-btn" lang={switchTo ?? undefined} onClick={content.toggle}>
+              {switchLabel}
+            </button>
+          </div>
+        )}
+
         {(x.requestedItems.length > 0 || x.credentialAsks.length > 0 || x.pressureSignals.length > 0) && (
           <div className="pills">
-            {x.requestedItems.length > 0 && <span className="lead">Asks for</span>}
+            {x.requestedItems.length > 0 && (
+              <Tip text={t("tip.asksFor")}>
+                <span className="lead">{t("card.asksFor")}</span>
+              </Tip>
+            )}
             {x.requestedItems.map((i) => (
               <span key={i} className="pill red">
-                {i}
+                {itemLabel(i, L)}
               </span>
             ))}
             {x.credentialAsks.map((i) => (
               <span key={i} className="pill red">
-                {i}
+                {credentialLabel(i, L)}
               </span>
             ))}
             {x.pressureSignals.map((p) => (
-              <span key={p} className="pill amber">
-                {p}
-              </span>
+              <Tip key={p} text={t("tip.pressure")}>
+                <span className="pill amber">{pressureLabel(p, L)}</span>
+              </Tip>
             ))}
           </div>
         )}
 
-        {result && <p className="expl">{result.explanation}</p>}
-        {x.credentialAsks.length > 0 && result?.verdict !== "verified" && (
-          <p className="expl warn">Real organizations never need your password or login code by email. Don't type them into a page you reached from this message.</p>
-        )}
+        {result && <p className="expl">{checkExplanation(result, L)}</p>}
+        {x.credentialAsks.length > 0 && result?.verdict !== "verified" && <p className="expl warn">{t("card.noPasswords")}</p>}
 
-        {result && result.signals.length > 0 && (
+        {signals.length > 0 && (
           <ul className="signals">
-            {result.signals.slice(0, 5).map((s) => (
-              <li key={s} className={result.verdict === "verified" && /match/i.test(s) && !/doesn't|isn't|not /i.test(s) ? "good" : ""}>
-                ⚑ {s}
+            {signals.slice(0, 5).map((s) => (
+              <li key={s.text} className={s.good ? "good" : ""}>
+                <span aria-hidden="true">⚑ </span>
+                {s.text}
               </li>
             ))}
           </ul>
@@ -152,11 +218,13 @@ export function Card({
 
         {(result?.officialPhone || portal) && (
           <div className="official">
-            <span className="dim">{result?.verdict === "verified" ? "Official channel:" : "Use the official channel instead:"}</span>
-            {result?.officialPhone && <span className="mono strong">Tel. {result.officialPhone}</span>}
+            <Tip text={t("tip.officialChannel")}>
+              <span className="dim">{result?.verdict === "verified" ? t("card.officialChannel") : t("card.useOfficialChannel")}</span>
+            </Tip>
+            {result?.officialPhone && <span className="mono strong">{t("card.tel", { phone: result.officialPhone })}</span>}
             {portal && (
               <a href={portal} target="_blank" rel="noopener noreferrer">
-                Official portal ↗
+                {t("card.officialPortal")}
               </a>
             )}
           </div>
@@ -164,13 +232,17 @@ export function Card({
 
         {links.length > 0 && (
           <div className="row">
-            <div className="label">Links in this email · guarded: you'll be asked before they open</div>
+            <Tip text={t("tip.guardedLinks")}>
+              <div className="label">{t("card.linksGuarded")}</div>
+            </Tip>
             {links.slice(0, 4).map((l) => (
               <div key={l.href} className={`link ${l.level}`}>
-                <span className="lvl">{l.level === "high" ? "!" : "△"}</span>
+                <span className="lvl" aria-hidden="true">
+                  {l.level === "high" ? "!" : "△"}
+                </span>
                 <div>
                   <Host host={l.host} domain={l.domain} />
-                  <div className="why">{l.reasons.join(" · ")}</div>
+                  <div className="why">{linkReasons(l, L).join(" · ")}</div>
                 </div>
               </div>
             ))}
@@ -179,15 +251,17 @@ export function Card({
 
         {scan.attachments.length > 0 && (
           <div className="row">
-            <div className="label">Attachments</div>
+            <div className="label">{t("card.attachments")}</div>
             {scan.attachments.map((a) => (
               <div key={a.name} className={`link ${a.level}`}>
-                <span className="lvl">!</span>
+                <span className="lvl" aria-hidden="true">
+                  !
+                </span>
                 <div>
                   <span className="mono">
                     <b>{a.name}</b>
                   </span>
-                  <div className="why">{a.reason}</div>
+                  <div className="why">{attachmentReason(a, L)}</div>
                 </div>
               </div>
             ))}
@@ -196,9 +270,11 @@ export function Card({
 
         {result && result.evidence.length > 0 && (
           <div className="row">
-            <button className="link-btn" onClick={() => setProof(!proof)}>
-              {proof ? "Hide" : "Show"} proof · {result.evidence.length} quote{result.evidence.length > 1 ? "s" : ""} fetched live from the official site
-            </button>
+            <Tip text={t("tip.proof")}>
+              <button className="link-btn" aria-expanded={proof} onClick={() => setProof(!proof)}>
+                {t(proof ? "card.hideProof" : "card.showProof", { count: result.evidence.length })}
+              </button>
+            </Tip>
             {proof && (
               <div className="evidence">
                 {result.evidence.map((e, i) => {
@@ -208,8 +284,8 @@ export function Card({
                       <span>"{e.quote}"</span>
                       <span className="src">
                         <span className="mono accent">{e.url.replace(/^https?:\/\//, "").slice(0, 70)}</span>
-                        {e.verified && <span className="pill green">verified in live fetch</span>}
-                        <span className="pill slate">{e.source}</span>
+                        {e.verified && <span className="pill green">{t("card.verifiedLive")}</span>}
+                        <span className="pill slate">{t(`source.${e.source}`)}</span>
                       </span>
                     </a>
                   );
@@ -221,20 +297,30 @@ export function Card({
 
         <div className="foot">
           {status === "idle" && canCheck && (
-            <button className="btn primary" onClick={run}>
-              Check who's asking
-            </button>
+            <Tip text={t("tip.checkWho")}>
+              <button className="btn primary" onClick={run}>
+                {t("card.checkWho")}
+              </button>
+            </Tip>
           )}
           {status === "error" && canCheck && (
             <button className="btn" onClick={run}>
-              Try again
+              {t("card.tryAgain")}
             </button>
           )}
-          <span>Read on this device. Only the claimed name, sender address, link domains and phone numbers are checked, never the email itself.</span>
-          <button className="link-btn" onClick={onLedger}>
-            What left this device?
-          </button>
-          {result && <span className="dim">{(result.latencyMs / 1000).toFixed(1)}s · {result.source}</span>}
+          <span>{t("card.footer")}</span>
+          <Tip text={t("tip.whatLeft")}>
+            <button className="link-btn" onClick={onLedger}>
+              {t("card.whatLeft")}
+            </button>
+          </Tip>
+          {result && (
+            <Tip text={t("tip.source")}>
+              <span className="dim" tabIndex={0}>
+                {t("card.latency", { seconds: fmt.fixed(result.latencyMs / 1000, 1), source: t(`source.${result.source}`) })}
+              </span>
+            </Tip>
+          )}
         </div>
       </div>
     </div>

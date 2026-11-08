@@ -1,6 +1,6 @@
 # Click Guard eval (deceptive buttons and links)
 
-Run 2026-11-08T14:09:53.805Z in Chrome with the real extension, on test pages with fictional sites.
+Run 2026-11-08T18:01:02.222Z in Chrome with the real extension, on test pages with fictional sites.
 
 | Metric | Result |
 |---|---|

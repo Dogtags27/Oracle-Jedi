@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
+import { Tip, useT } from "@oj/core/i18n/react";
 import { Layout } from "./components/Layout";
 import { HeroCarousel } from "./components/HeroCarousel";
-import { Button, Card, Icon, PqTag, type IconName } from "./components/ui";
+import { Card, Icon, PqTag, buttonClass, rich, type IconName } from "./components/ui";
 import { api } from "./lib/api";
+import { HOME } from "./locales/home";
 import OfficePage from "./pages/Office";
 import RequestPage from "./pages/Request";
 import CheckPage from "./pages/Check";
@@ -11,19 +13,16 @@ import HandoffPage from "./pages/Handoff";
 import BreachDayPage from "./pages/BreachDay";
 import SentPage from "./pages/Sent";
 
-const STEPS: { n: string; title: string; body: string; icon: IconName }[] = [
-  { n: "01", title: "Check who's asking", body: "Before you send anything, Avaran compares the sender with the organization's real website and quotes the proof. Verified, doesn't match, or unknown. Never a guess.", icon: "eye" },
-  { n: "02", title: "Send only what's needed", body: "Trim finds Social Security, account and card numbers on your device, blacks out what they didn't ask for, and re-checks the result before it leaves.", icon: "scissors" },
-  { n: "03", title: "Seal it, keep control", body: "Files are locked with post-quantum encryption for that one office. Our servers hold ciphertext only. You can revoke it, and it destroys itself on a timer.", icon: "lock" },
+const STEPS: { n: string; key: "step1" | "step2" | "step3"; icon: IconName }[] = [
+  { n: "01", key: "step1", icon: "eye" },
+  { n: "02", key: "step2", icon: "scissors" },
+  { n: "03", key: "step3", icon: "lock" },
 ];
 
-const GUARDS: { title: string; body: string }[] = [
-  { title: "Who's asking, inside Gmail", body: "A quiet card on any email that asks for documents or passwords, with a guard on deceptive links and attachments." },
-  { title: "Sheathe while you share", body: "The moment you start sharing your screen, your chats and inbox are veiled. You choose what to reveal." },
-  { title: "Click Guard", body: "Buttons that say Close but open somewhere else, hidden pop-ups and invisible layers are stopped, and you see where they lead." },
-];
+const GUARDS = ["guard1", "guard2", "guard3"] as const;
 
 function Home() {
+  const t = useT(HOME);
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   useEffect(() => {
     api<{ ok: boolean }>("/health")
@@ -34,29 +33,28 @@ function Home() {
     <Layout wide>
       <section className="grid items-center gap-10 py-4 lg:grid-cols-[1.25fr_1fr]">
         <div>
-          <p className="text-[13px] font-medium uppercase tracking-[0.14em] text-geru-600">Avaran · आवरण · a protective layer</p>
+          <p className="text-[13px] font-medium uppercase tracking-[0.14em] text-geru-600">{t("kicker")}</p>
           <h1 className="mt-4 text-[42px] font-semibold leading-[1.08] text-ink sm:text-[54px]">
-            Share what's needed.
+            {t("h1.a")}
             <br />
-            Keep the rest veiled.
+            {t("h1.b")}
           </h1>
-          <p className="mt-5 max-w-xl text-[18px] leading-relaxed text-ink-2">
-            AI can fake the message, but not the office's own website. Avaran checks who's asking, trims what they don't need, and seals the rest so nothing
-            readable is left sitting in an inbox.
-          </p>
+          <p className="mt-5 max-w-xl text-[18px] leading-relaxed text-ink-2">{t("lede")}</p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link to="/office">
-              <Button>Request documents as an office</Button>
-            </Link>
-            <Link to="/check">
-              <Button variant="ghost">Check a message you received</Button>
+            <Tip text={t("cta.office.tip")}>
+              <Link to="/office" className={buttonClass("primary")}>
+                {t("cta.office")}
+              </Link>
+            </Tip>
+            <Link to="/check" className={buttonClass("ghost")}>
+              {t("cta.check")}
             </Link>
           </div>
           <div className="mt-6 flex flex-wrap items-center gap-3 text-[13.5px] text-ink-3">
             <PqTag />
             <span className="inline-flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${status === "online" ? "bg-neem-500" : status === "offline" ? "bg-geru-500" : "bg-haldi-500"}`} />
-              Service {status}
+              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${status === "online" ? "bg-neem-500" : status === "offline" ? "bg-geru-500" : "bg-haldi-500"}`} />
+              {t(`service.${status}`)}
             </span>
           </div>
         </div>
@@ -64,7 +62,7 @@ function Home() {
       </section>
 
       <section className="mt-16 border-t border-line pt-12">
-        <h2 className="text-[26px] font-semibold text-ink">How it works</h2>
+        <h2 className="text-[26px] font-semibold text-ink">{t("how.title")}</h2>
         <div className="mt-8 grid gap-8 md:grid-cols-3">
           {STEPS.map((s) => (
             <div key={s.n}>
@@ -74,8 +72,8 @@ function Home() {
                   <Icon name={s.icon} className="h-[18px] w-[18px]" />
                 </span>
               </div>
-              <h3 className="mt-3 text-[18px] font-semibold text-ink">{s.title}</h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{s.body}</p>
+              <h3 className="mt-3 text-[18px] font-semibold text-ink">{t(`${s.key}.title`)}</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-ink-2">{t(`${s.key}.body`)}</p>
             </div>
           ))}
         </div>
@@ -84,41 +82,48 @@ function Home() {
       <section className="mt-16 rounded-2xl border border-line bg-card p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-[26px] font-semibold text-ink">In your browser</h2>
-            <p className="mt-1 text-[15px] text-ink-3">The Avaran extension adds three quiet protections. All of them run on your device.</p>
+            <h2 className="text-[26px] font-semibold text-ink">{t("browser.title")}</h2>
+            <p className="mt-1 text-[15px] text-ink-3">{t("browser.lede")}</p>
           </div>
-          <Link to="/breach-day" className="inline-flex items-center gap-1.5 text-[15px] font-medium text-neel-700 hover:underline">
-            See what a breach exposes <Icon name="arrow" className="h-4 w-4" />
-          </Link>
+          <Tip text={t("browser.breach.tip")}>
+            <Link to="/breach-day" className="inline-flex items-center gap-1.5 text-[15px] font-medium text-neel-700 hover:underline">
+              {t("browser.breach")} <Icon name="arrow" className="h-4 w-4" />
+            </Link>
+          </Tip>
         </div>
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           {GUARDS.map((g) => (
-            <div key={g.title} className="border-l-2 border-neel-200 pl-4">
-              <h3 className="text-[16.5px] font-semibold text-ink">{g.title}</h3>
-              <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-2">{g.body}</p>
+            <div key={g} className="border-l-2 border-neel-200 pl-4">
+              <h3 className="text-[16.5px] font-semibold text-ink">{t(`${g}.title`)}</h3>
+              <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-2">{t(`${g}.body`)}</p>
             </div>
           ))}
         </div>
         <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6">
-          <a href="/download/avaran-0.1.0-chrome.zip" download>
-            <Button>Download the Chrome extension</Button>
-          </a>
+          <Tip text={t("download.tip")}>
+            <a href="/download/avaran-0.1.0-chrome.zip" download className={buttonClass("primary")}>
+              {t("download")}
+            </a>
+          </Tip>
           <p className="max-w-xl text-[13.5px] leading-relaxed text-ink-3">
-            Unzip it, open <span className="font-mono text-ink-2">chrome://extensions</span>, turn on Developer mode, choose Load unpacked and pick the unzipped folder. Chrome Web Store listing in review.
+            {rich(t("install"), { code: (c) => <span className="font-mono text-ink-2">{c}</span> })}
           </p>
-          <a href="/playground/click-guard.html" className="text-[14px] font-medium text-neel-700 hover:underline">
-            Try the Click Guard demo
-          </a>
+          <Tip text={t("demo.tip")}>
+            <a href="/playground/click-guard.html" className="text-[14px] font-medium text-neel-700 hover:underline">
+              {t("demo")}
+            </a>
+          </Tip>
         </div>
       </section>
     </Layout>
   );
 }
 
-function Placeholder({ title }: { title: string }) {
+function Placeholder() {
+  const t = useT(HOME);
   return (
     <Layout>
-      <Card title={title}>Coming in a later milestone.</Card>
+      <Card title={t("notFound")}>{t("notFound.body")}</Card>
     </Layout>
   );
 }
@@ -133,7 +138,7 @@ export default function App() {
       <Route path="/h/:id" element={<HandoffPage />} />
       <Route path="/breach-day" element={<BreachDayPage />} />
       <Route path="/sent" element={<SentPage />} />
-      <Route path="*" element={<Placeholder title="Not found" />} />
+      <Route path="*" element={<Placeholder />} />
     </Routes>
   );
 }

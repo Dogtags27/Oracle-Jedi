@@ -1,10 +1,10 @@
 # Sheathe eval (screen-share privacy)
 
-Run 2026-11-08T11:52:47.244Z in Chrome with the real extension. Fixtures are structure-only pages with fictional people.
+Run 2026-11-08T18:00:19.187Z in Chrome with the real extension. Fixtures are structure-only pages with fictional people.
 
 | Metric | Result |
 |---|---|
-| Time from the share picker opening to another tab being sheathed | **16 ms** (before any source is picked) |
+| Time from the share picker opening to another tab being sheathed | **36 ms** (before any source is picked) |
 | Sensitive elements blurred during an entire-screen share (WhatsApp + Gmail) | **22/22** |
 | Reveal precision | only the revealed chat is visible; other chats stay blurred |
 | Unrecognized page structure | whole region blurred (fails closed) |

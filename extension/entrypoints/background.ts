@@ -1,5 +1,8 @@
 import type { CheckResponse } from "@oj/core";
+import { translator, type KeyOf, type Locale } from "@oj/core/i18n";
 import { postJson } from "@/lib/api";
+import { getLocale, onLocaleChange } from "@/lib/locale";
+import { MENUS } from "@/locales/menus";
 import { PANEL_INTENT, vaultKey, type Message, type PanelIntent, type VaultRecord } from "@/lib/messages";
 import { MEETING_MATCHES, OFF, SOCIAL_MATCHES, STATE_KEY, loadSettings, loadState, meetingKeyFor, type SheatheState, type Surface } from "@/lib/sheathe";
 
@@ -132,6 +135,26 @@ async function injectGuard(tabId: number | undefined) {
 
 const fromExtensionPage = (sender: Browser.runtime.MessageSender) => Boolean(sender.url?.startsWith(browser.runtime.getURL("/")));
 
+const MENU_ITEMS: { id: string; title: KeyOf<typeof MENUS>; contexts: Browser.contextMenus.CreateProperties["contexts"] }[] = [
+  { id: "oj-link", title: "menu.link", contexts: ["link"] },
+  { id: "oj-check", title: "menu.check", contexts: ["selection"] },
+  { id: "oj-sheathe", title: "menu.sheathe", contexts: ["page", "image", "link"] },
+  { id: "oj-guard", title: "menu.guard", contexts: ["page", "image", "link"] },
+  { id: "oj-seal", title: "menu.seal", contexts: ["page", "editable"] },
+];
+
+async function createMenus() {
+  const tr = translator(MENUS, await getLocale());
+  browser.contextMenus.removeAll(() => {
+    for (const item of MENU_ITEMS) browser.contextMenus.create({ id: item.id, title: tr(item.title), contexts: item.contexts });
+  });
+}
+
+function retitleMenus(locale: Locale) {
+  const tr = translator(MENUS, locale);
+  for (const item of MENU_ITEMS) browser.contextMenus.update(item.id, { title: tr(item.title) }).catch(() => {});
+}
+
 async function adoptOpenTabs() {
   const [social, meetings] = await Promise.all([browser.tabs.query({ url: SOCIAL_MATCHES }), browser.tabs.query({ url: MEETING_MATCHES })]);
   const tabs = (list: Browser.tabs.Tab[]) => list.map((t) => t.id).filter((id): id is number => id !== undefined);
@@ -229,14 +252,10 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => {
     reset();
     adoptOpenTabs().catch(() => {});
-    browser.contextMenus.removeAll(() => {
-      browser.contextMenus.create({ id: "oj-link", title: "Check this link before opening", contexts: ["link"] });
-      browser.contextMenus.create({ id: "oj-check", title: "Check who's asking", contexts: ["selection"] });
-      browser.contextMenus.create({ id: "oj-sheathe", title: "Sheathe this page (blur personal info)", contexts: ["page", "image", "link"] });
-      browser.contextMenus.create({ id: "oj-guard", title: "Check this page for deceptive buttons", contexts: ["page", "image", "link"] });
-      browser.contextMenus.create({ id: "oj-seal", title: "Seal a file with Avaran", contexts: ["page", "editable"] });
-    });
+    createMenus().catch(() => {});
   });
+
+  onLocaleChange(retitleMenus);
 
   browser.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId === "oj-sheathe") {

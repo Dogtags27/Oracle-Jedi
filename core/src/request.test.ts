@@ -10,10 +10,11 @@ describe("request extractor (on-device, rules only)", () => {
     expect(x.isDocumentRequest).toBe(true);
     expect(x.claimedOrg).toBe("Maple Street Tax");
     expect(x.senderDomain).toBe("gmail.com");
-    expect(x.requestedItems).toEqual(expect.arrayContaining(["W-2", "Social Security number"]));
+    expect(x.requestedItems).toEqual(expect.arrayContaining(["w2", "ssn"]));
     expect(x.linkDomains).toEqual(["maple-street-files.co"]);
     expect(x.phones).toHaveLength(1);
-    expect(x.pressureSignals).toContain("Tight deadline");
+    expect(x.pressureSignals).toContain("deadline");
+    expect(x.language).toBe("en");
   });
 
   it("ignores ordinary email", () => {

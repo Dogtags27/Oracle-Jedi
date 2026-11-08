@@ -1,0 +1,22 @@
+{
+  "extDescription": {
+    "message": "Confidentialité du navigateur : vérifiez qui demande, scellez vos documents, masquez vos chats en partage, bloquez les faux boutons.",
+    "description": "Extension description shown in the Chrome Web Store and on chrome://extensions. Max 132 characters."
+  },
+  "cmdSheatheToggle": {
+    "message": "Activer ou désactiver Sheathe (fonctionne même si Zoom ou Teams est au premier plan)",
+    "description": "Keyboard shortcut description: turn Sheathe (blur chats while screen sharing) on or off."
+  },
+  "cmdSheathePanic": {
+    "message": "Panique : flouter immédiatement toutes les discussions et boîtes de réception",
+    "description": "Keyboard shortcut description: immediately blur every chat and inbox."
+  },
+  "cmdSheatheTab": {
+    "message": "Sheathe sur cette page : flouter les infos personnelles sur n’importe quel site",
+    "description": "Keyboard shortcut description: blur personal information on the current page."
+  },
+  "cmdGuardPage": {
+    "message": "Click Guard : chercher des boutons trompeurs sur cette page",
+    "description": "Keyboard shortcut description: scan the current page for deceptive buttons with Click Guard."
+  }
+}

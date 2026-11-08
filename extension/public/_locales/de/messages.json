@@ -1,0 +1,22 @@
+{
+  "extDescription": {
+    "message": "Datenschutz für Ihren Browser: prüfen, wer fragt, Dokumente versiegeln, Chats beim Teilen verbergen, täuschende Buttons stoppen.",
+    "description": "Extension description shown in the Chrome Web Store and on chrome://extensions. Max 132 characters."
+  },
+  "cmdSheatheToggle": {
+    "message": "Sheathe ein/aus (funktioniert auch, wenn Zoom oder Teams im Vordergrund ist)",
+    "description": "Keyboard shortcut description: turn Sheathe (blur chats while screen sharing) on or off."
+  },
+  "cmdSheathePanic": {
+    "message": "Panik: sofort alle Chats und Posteingänge unscharf machen",
+    "description": "Keyboard shortcut description: immediately blur every chat and inbox."
+  },
+  "cmdSheatheTab": {
+    "message": "Sheathe auf dieser Seite: persönliche Daten auf jeder Website unscharf machen",
+    "description": "Keyboard shortcut description: blur personal information on the current page."
+  },
+  "cmdGuardPage": {
+    "message": "Click Guard: diese Seite auf täuschende Buttons prüfen",
+    "description": "Keyboard shortcut description: scan the current page for deceptive buttons with Click Guard."
+  }
+}
