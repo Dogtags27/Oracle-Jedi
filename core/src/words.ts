@@ -1,0 +1,18 @@
+export const WORDS = [
+  "acorn", "amber", "anchor", "apple", "arrow", "aspen", "atlas", "autumn", "badge", "bamboo", "banjo", "basil", "beacon", "berry", "birch", "bison",
+  "blaze", "bloom", "bolt", "bonsai", "breeze", "brick", "brook", "cactus", "camel", "canoe", "canyon", "cedar", "chalk", "cherry", "cider", "cinder",
+  "citrus", "clover", "cobalt", "comet", "coral", "cosmos", "cotton", "crane", "crater", "crystal", "cypress", "daisy", "delta", "desert", "dingo", "dolphin",
+  "dragon", "drift", "dune", "eagle", "echo", "ember", "emerald", "falcon", "fern", "fiddle", "fjord", "flame", "flint", "forest", "fossil", "fox",
+  "galaxy", "garnet", "gecko", "geyser", "ginger", "glacier", "globe", "granite", "grape", "gravel", "grove", "harbor", "hazel", "heron", "hickory", "honey",
+  "horizon", "iceberg", "igloo", "indigo", "iris", "island", "ivory", "jade", "jaguar", "jasmine", "jelly", "jungle", "juniper", "kayak", "kelp", "kettle",
+  "kiwi", "koala", "lagoon", "lantern", "lava", "lemon", "lilac", "lily", "linen", "lion", "lotus", "lunar", "lynx", "magnet", "mango", "maple",
+  "marble", "meadow", "melon", "meteor", "mint", "mirror", "mocha", "moose", "mosaic", "moss", "nebula", "nectar", "nickel", "nova", "oak", "oasis",
+  "ocean", "olive", "onyx", "opal", "orbit", "orchid", "otter", "owl", "oyster", "palm", "panda", "papaya", "parrot", "peach", "pearl", "pebble",
+  "pepper", "piano", "pine", "pixel", "planet", "plum", "polar", "pollen", "poppy", "prism", "puffin", "pumpkin", "quartz", "quill", "rabbit", "radar",
+  "rain", "raven", "reef", "ribbon", "river", "robin", "rocket", "rose", "ruby", "saffron", "sage", "salmon", "sapphire", "satin", "savanna", "scarlet",
+  "shadow", "shell", "sierra", "silver", "sky", "slate", "snow", "solar", "sonic", "spark", "sphinx", "spruce", "squid", "star", "stone", "storm",
+  "summit", "sunset", "swan", "tango", "teal", "thunder", "tiger", "timber", "topaz", "torch", "tulip", "tundra", "turtle", "twig", "umber", "unicorn",
+  "valley", "velvet", "violet", "viper", "vortex", "walnut", "walrus", "wave", "willow", "wind", "winter", "wolf", "yarrow", "yeti", "zebra", "zenith",
+  "zephyr", "zinc", "acacia", "alpine", "aurora", "bagel", "banyan", "bayou", "beetle", "biscuit", "bluff", "bramble", "bronze", "buffalo", "butter", "cable",
+  "cairn", "candle", "caramel", "carbon", "cashew", "castle", "cello", "cheetah", "chestnut", "cobra", "condor", "copper", "cricket", "cumin", "dahlia", "denim",
+] as const;

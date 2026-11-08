@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-jedi-400: #4fb3ff;
+  --color-jedi-500: #1e90ff;
+  --color-saber: #39ff9e;
+  --color-sith: #ff4d5e;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+  min-width: 320px;
+}

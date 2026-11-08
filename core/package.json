@@ -1,0 +1,18 @@
+{
+  "name": "@oj/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@noble/post-quantum": "^0.7.1",
+    "hash-wasm": "^4.13.0",
+    "tldts": "^7.4.19"
+  }
+}
