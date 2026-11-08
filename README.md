@@ -2,7 +2,7 @@
 
 **Check who's asking. Send only what they need. Seal it.**
 
-Avaran (HANDOFF) is how you send and request sensitive documents without leaving them readable in inboxes. Each document is checked against the requester's real website, trimmed down on your own device, and sealed with post-quantum encryption (`HANDOFF-PQ1`: X-Wing ML-KEM-768 + X25519, ML-DSA-65, AES-256-GCM).
+Avaran (HANDOFF) is how you send and request sensitive documents without leaving them readable in inboxes. Each document/s is checked against the requester's real website, trimmed down on your own device, and sealed with post-quantum encryption (`HANDOFF-PQ1`: X-Wing ML-KEM-768 + X25519, ML-DSA-65, AES-256-GCM).
 
 ## Monorepo
 
