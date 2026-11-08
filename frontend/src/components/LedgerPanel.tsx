@@ -18,7 +18,7 @@ export function LedgerPanel({ title = "Privacy Ledger · everything that left th
   const [open, setOpen] = useState<number | null>(null);
   useEffect(() => ledger.subscribe(setEntries), []);
   return (
-    <Card title={title} subtitle={`${entries.length} requests · documents only ever leave as ciphertext`}>
+    <Card title={title} subtitle={`${entries.reduce((n, e) => n + (e.count ?? 1), 0)} requests · documents only ever leave as ciphertext`}>
       <div className="max-h-72 space-y-1 overflow-auto font-mono text-xs">
         {entries.length === 0 && <p className="text-slate-500">Nothing has left this device yet.</p>}
         {entries.map((e, i) => (
@@ -26,6 +26,7 @@ export function LedgerPanel({ title = "Privacy Ledger · everything that left th
             <div className="flex items-center gap-2">
               <span className={e.method === "PUT" ? "text-saber" : e.method === "DELETE" ? "text-sith" : "text-jedi-400"}>{e.method}</span>
               <span className="truncate text-slate-300">{where(e.url)}</span>
+              {(e.count ?? 1) > 1 && <span className="shrink-0 rounded bg-ink/[0.06] px-1.5 text-[11px] text-slate-400">×{e.count}</span>}
               <span className="ml-auto shrink-0 text-slate-500">{bytes(e.bytes)}</span>
             </div>
             {open === i && e.preview && <pre className="mt-1 whitespace-pre-wrap break-all text-[11px] text-slate-500">{e.preview}</pre>}

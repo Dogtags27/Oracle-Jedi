@@ -187,4 +187,6 @@ export interface LedgerEntry {
   url: string;
   bytes: number;
   preview: string;
+  count?: number;
+  poll?: boolean;
 }

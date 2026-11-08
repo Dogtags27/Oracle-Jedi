@@ -5,6 +5,7 @@ import { Badge, Button, Card, PqTag, SafetyWords, Spinner, StatusChip, VerifiedB
 import { LedgerPanel } from "../components/LedgerPanel";
 import { ApiError, api } from "../lib/api";
 import { bytes, countdown } from "../lib/format";
+import { usePolling } from "../lib/poll";
 import { checkOfficeBundle, loadSent, revokeSent, saveSent, sendToOffice, sentStatus, type SentItem, type Stage } from "../lib/sender";
 import type { PublicRequest } from "../lib/types";
 import type { HandoffStatus } from "@oj/core";
@@ -38,22 +39,21 @@ export function SentList({ items, onChange }: { items: SentItem[]; onChange: (it
   const [statuses, setStatuses] = useState<Record<string, HandoffStatus>>({});
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState("");
+  const poke = usePolling(async () => {
+    const live = items.filter((i) => !["revoked", "expired"].includes(statuses[i.id] ?? ""));
+    if (live.length === 0) return true;
+    const entries = await Promise.all(live.map(async (i) => [i.id, (await sentStatus(i).catch(() => null))?.status] as const));
+    const found = Object.fromEntries(entries.filter((e): e is readonly [string, HandoffStatus] => Boolean(e[1])));
+    setStatuses((s) => ({ ...s, ...found }));
+    return entries.some(([, s]) => s);
+  }, 5000, items.length > 0);
   useEffect(() => {
-    let alive = true;
-    async function poll() {
-      const entries = await Promise.all(items.map(async (i) => [i.id, (await sentStatus(i).catch(() => null))?.status] as const));
-      if (alive) setStatuses(Object.fromEntries(entries.filter(([, s]) => s)) as Record<string, HandoffStatus>);
-    }
-    poll();
-    const t = setInterval(() => {
-      setNow(Date.now());
-      poll();
-    }, 2000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [items]);
+    poke();
+  }, [items, poke]);
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 2000);
+    return () => clearInterval(t);
+  }, []);
   if (items.length === 0) return null;
   async function revoke(item: SentItem) {
     setBusy(item.id);

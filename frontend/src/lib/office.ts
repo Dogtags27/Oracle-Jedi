@@ -52,8 +52,8 @@ export async function login(keys: OfficeKeys) {
 export const checkDns = (domain: string) =>
   api<OfficeView & { dnsFound: boolean; dnsMatch: boolean }>(`/offices/${domain}/verify`, { method: "POST" });
 
-export const listHandoffs = (token: string) => api<{ handoffs: HandoffSummary[] }>("/office/handoffs", { token });
-export const listRequests = (token: string) => api<{ requests: OfficeRequest[] }>("/office/requests", { token });
+export const listHandoffs = (token: string) => api<{ handoffs: HandoffSummary[] }>("/office/handoffs", { token, poll: true });
+export const listRequests = (token: string) => api<{ requests: OfficeRequest[] }>("/office/requests", { token, poll: true });
 
 export const createRequest = (token: string, checklist: string[], note: string, expiresInMinutes: number) =>
   api<OfficeRequest>("/office/requests", { token, json: { checklist, note: note || undefined, expiresInMinutes } });

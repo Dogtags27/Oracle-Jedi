@@ -28,6 +28,12 @@ try {
   await office.click(text("Generate keys & register"));
   await office.waitForSelector(text("Sealed inbox"), { timeout: 30000 });
   ok("office generated PQ keys in-browser, registered, and signed in");
+  const polls = [];
+  office.on("request", (r) => /\/office\/(requests|handoffs)$/.test(r.url()) && polls.push(Date.now()));
+  await new Promise((r) => setTimeout(r, 12000));
+  const perMinute = Math.round((polls.length * 60) / 12);
+  if (perMinute > 40) throw new Error(`dashboard polls too often: ${perMinute} requests a minute`);
+  ok(`office dashboard polls ${perMinute} requests a minute (was 80), pausing while the tab is hidden`);
 
   await office.click(text("Create request link"));
   await office.waitForSelector(text("Latest request link"), { timeout: 15000 });

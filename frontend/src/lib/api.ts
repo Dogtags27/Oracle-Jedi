@@ -14,9 +14,16 @@ function describe(body: unknown): { bytes: number; preview: string } {
   return { bytes: 0, preview: "[binary]" };
 }
 
-function record(method: string, url: string, body: unknown) {
+function record(method: string, url: string, body: unknown, poll = false) {
   const { bytes, preview } = describe(body);
-  entries.unshift({ at: new Date().toISOString(), method, url, bytes, preview });
+  const at = new Date().toISOString();
+  const same = poll ? entries.slice(0, 8).findIndex((e) => e.poll && e.method === method && e.url === url) : -1;
+  if (same >= 0) {
+    const [prev] = entries.splice(same, 1);
+    entries.unshift({ ...prev!, at, count: (prev!.count ?? 1) + 1 });
+  } else {
+    entries.unshift({ at, method, url, bytes, preview, ...(poll ? { poll: true, count: 1 } : {}) });
+  }
   if (entries.length > 200) entries.length = 200;
   listeners.forEach((fn) => fn(entries.slice()));
 }
@@ -41,14 +48,14 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: RequestInit & { token?: string; json?: unknown } = {}): Promise<T> {
+export async function api<T>(path: string, init: RequestInit & { token?: string; json?: unknown; poll?: boolean } = {}): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
   const headers: Record<string, string> = { ...((init.headers as Record<string, string>) ?? {}) };
   const body = init.json !== undefined ? JSON.stringify(init.json) : init.body;
   if (init.json !== undefined) headers["Content-Type"] = "application/json";
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
   const method = init.method ?? (init.json !== undefined ? "POST" : "GET");
-  record(method, url, body);
+  record(method, url, body, init.poll);
   const res = await fetch(url, { ...init, method, body, headers, referrerPolicy: "no-referrer", credentials: "omit" });
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) throw new ApiError(res.status, String(data.error ?? res.status), data);

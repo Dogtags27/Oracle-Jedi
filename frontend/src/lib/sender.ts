@@ -85,7 +85,7 @@ export async function sendToOffice(
 }
 
 export const sentStatus = (item: SentItem) =>
-  api<HandoffSummary & { openReceipt: unknown }>(`/handoffs/${item.id}/status`, { headers: { "X-Revoke-Token": item.revokeToken } });
+  api<HandoffSummary & { openReceipt: unknown }>(`/handoffs/${item.id}/status`, { headers: { "X-Revoke-Token": item.revokeToken }, poll: true });
 
 export const revokeSent = (item: SentItem) =>
   api<HandoffSummary>(`/handoffs/${item.id}`, { method: "DELETE", headers: { "X-Revoke-Token": item.revokeToken } });

@@ -7,6 +7,7 @@ import { Viewer } from "../components/Viewer";
 import { LedgerPanel } from "../components/LedgerPanel";
 import { APP_URL, ApiError } from "../lib/api";
 import { ago, bytes, countdown } from "../lib/format";
+import { usePolling } from "../lib/poll";
 import {
   checkDns,
   clearKit,
@@ -365,21 +366,22 @@ function Dashboard({ keys, kit }: { keys: OfficeKeys; kit: KeyKit }) {
   }, [ensureToken]);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
+    if (!token) return true;
     try {
       const [h, r] = await Promise.all([listHandoffs(token), listRequests(token)]);
       setHandoffs(h.handoffs);
       setRequests(r.requests);
+      return true;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) await ensureToken();
+      if (e instanceof ApiError && e.status === 401) {
+        await ensureToken().catch(() => {});
+        return true;
+      }
+      return false;
     }
   }, [token, ensureToken]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 1500);
-    return () => clearInterval(t);
-  }, [refresh]);
+  usePolling(refresh, 4000, Boolean(token));
 
   async function open(h: HandoffSummary) {
     setOpening(h.id);
