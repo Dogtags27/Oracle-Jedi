@@ -44,7 +44,24 @@ Don't deploy with the `vercel` CLI from your laptop. It uploads files that git i
 
 ---
 
-## 2. Backend on AWS: Amazon ECS Express Mode
+> **Our AWS account only works in us-east-2 (Ohio).** The AWS path we use is a single EC2 server, click by click in `docs/DEPLOY_EC2.md`. Sections 2 (ECS Express) and 2A (Vercel) below are alternatives.
+
+## 2A. Backend on Vercel (what we use: our AWS credits account blocks every compute service)
+
+The AWS account we were given is an organization-managed credits sandbox. Its service control policy denies ECS, ECR, Lambda, EC2, Lightsail, Elastic Beanstalk, App Runner, Amplify, S3, SSM and Secrets Manager. So the backend runs as a Vercel function instead. `backend/src/vercel.ts` wraps the same Hono app, and `npm run vercel-build` bundles it with esbuild into Vercel's Build Output format (`backend/.vercel/output`). Uploads go straight to Supabase, so no large bodies pass through the function. Expired files are purged at most once a minute, on incoming requests.
+
+1. Vercel → **Add New** → **Project** → import the same GitHub repo again.
+2. **Project name:** `avaran-api`. **Root Directory:** `backend`. **Framework Preset:** Other. **Build Command:** override with `npm run vercel-build`. Leave Output Directory and Install Command at their defaults.
+3. **Environment Variables:** open your local `.env`, copy all of it, click the first **Key** box and paste. Vercel splits it into rows. Then remove any `PORT`, `ALLOWED_ORIGINS` or `PUBLIC_APP_URL` rows that came with it, and add:
+   - `ALLOWED_ORIGINS` = `APP_URL`
+   - `PUBLIC_APP_URL` = `APP_URL`
+   - `DEMO_OFFICE_DOMAIN` = `OFFICE_DOMAIN`
+4. **Deploy.** `API_URL` is the production domain, for example `https://avaran-api.vercel.app`, and `API_BASE` is `API_URL/api`. Check `API_URL/api/health`: every `configured` flag you need, plus `schema` and `bucket`, must be `true`.
+5. Optional: Settings → **Functions** → **Function Region**: the region closest to your Supabase project.
+
+Then continue with step 3. The CSP in `frontend/vercel.json` already allows `https://*.vercel.app`, so no CSP change is needed.
+
+## 2. Backend on AWS: Amazon ECS Express Mode (needs an account that allows ECS and ECR)
 
 **Why ECS Express Mode:** AWS App Runner stopped accepting new customers on **30 April 2026** (AWS "App Runner availability change" page, checked 8 Nov 2026). AWS recommends **ECS Express Mode** instead (launched 21 Nov 2025, all regions). You give it one container image and it creates Fargate, an HTTPS load balancer with a certificate, autoscaling, logs and a URL like `https://<service>.ecs.<region>.on.aws`. Express Mode itself is free. You pay for Fargate plus the load balancer, roughly 1 to 2 USD a day at 1 task. Delete it after judging (step 6).
 

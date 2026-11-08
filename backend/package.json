@@ -8,7 +8,8 @@
     "start": "tsx src/server.ts",
     "typecheck": "tsc -p .",
     "smoke": "tsx scripts/smoke.ts",
-    "eval:check": "tsx scripts/eval-check.ts"
+    "eval:check": "tsx scripts/eval-check.ts",
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.6",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "esbuild": "^0.28.2"
   }
 }
