@@ -1,21 +1,115 @@
 @import "tailwindcss";
+@source "../../core/src";
 
 @theme {
-  --color-jedi-50: #eef7ff;
-  --color-jedi-400: #4fb3ff;
-  --color-jedi-500: #1e90ff;
-  --color-jedi-700: #0b4f99;
-  --color-saber: #39ff9e;
-  --color-sith: #ff4d5e;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Mukta", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Eczar", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+
+  --color-paper: #f6f2ea;
+  --color-paper-2: #eee8dc;
+  --color-card: #fffdf8;
+  --color-line: #e2d9c9;
+  --color-line-2: #cfc3ae;
+  --color-ink: #1e1b17;
+  --color-ink-2: #4b443b;
+  --color-ink-3: #776e62;
+
+  --color-neel-50: #eef0f7;
+  --color-neel-100: #dce0ef;
+  --color-neel-200: #bcc3e0;
+  --color-neel-300: #95a0cc;
+  --color-neel-500: #4a5895;
+  --color-neel-600: #36437e;
+  --color-neel-700: #2b3666;
+  --color-neel-800: #222a4f;
+  --color-neel-900: #181e38;
+
+  --color-neem-50: #edf4ef;
+  --color-neem-100: #d6e8dc;
+  --color-neem-200: #b0d2bc;
+  --color-neem-500: #3f7b58;
+  --color-neem-600: #326747;
+  --color-neem-700: #285338;
+
+  --color-haldi-50: #fbf4e3;
+  --color-haldi-100: #f4e4bd;
+  --color-haldi-200: #e9cd8a;
+  --color-haldi-500: #b5852b;
+  --color-haldi-600: #946a1d;
+  --color-haldi-700: #6e4f14;
+
+  --color-geru-50: #fbeeea;
+  --color-geru-100: #f3d6cc;
+  --color-geru-200: #e6b2a2;
+  --color-geru-500: #b04b32;
+  --color-geru-600: #973d27;
+  --color-geru-700: #7a311f;
+
+  --color-slate-950: #f6f2ea;
+  --color-slate-900: #fffdf8;
+  --color-slate-800: #eee8dc;
+  --color-slate-700: #e2d9c9;
+  --color-slate-600: #a39888;
+  --color-slate-500: #776e62;
+  --color-slate-400: #6a6155;
+  --color-slate-300: #4b443b;
+  --color-slate-200: #2e2924;
+  --color-slate-100: #1e1b17;
+
+  --color-jedi-50: #eef0f7;
+  --color-jedi-400: #36437e;
+  --color-jedi-500: #2b3666;
+  --color-jedi-700: #222a4f;
+  --color-saber: #326747;
+  --color-sith: #973d27;
+  --color-amber-200: #6e4f14;
+  --color-amber-300: #946a1d;
+  --color-amber-400: #b5852b;
+  --color-red-100: #f3d6cc;
+  --color-red-700: #7a311f;
 }
 
+@layer base {
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.012em;
+}
+
+::selection {
+  background: var(--color-neel-100);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-neel-600);
+  outline-offset: 2px;
+}
+}
+
+@layer components {
+.jaali {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%2336437e' stroke-opacity='0.13' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='14'/%3E%3Ccircle cx='0' cy='0' r='14'/%3E%3Ccircle cx='28' cy='0' r='14'/%3E%3Ccircle cx='0' cy='28' r='14'/%3E%3Ccircle cx='28' cy='28' r='14'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.jaali-soft {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke='%2336437e' stroke-opacity='0.06' stroke-width='1'%3E%3Ccircle cx='14' cy='14' r='14'/%3E%3Ccircle cx='0' cy='0' r='14'/%3E%3Ccircle cx='28' cy='0' r='14'/%3E%3Ccircle cx='0' cy='28' r='14'/%3E%3Ccircle cx='28' cy='28' r='14'/%3E%3C/g%3E%3C/svg%3E");
+}
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyKit, Meta, OfficeKeys } from "@oj/core";
 import { Layout } from "../components/Layout";
-import { Badge, Button, Card, Input, PqTag, SafetyWords, Spinner, StatusChip, VerifiedBadge } from "../components/ui";
+import { Badge, Button, Card, Icon, Input, PqTag, SafetyWords, Spinner, StatusChip, VerifiedBadge } from "../components/ui";
 import { Qr } from "../components/Qr";
 import { Viewer } from "../components/Viewer";
 import { LedgerPanel } from "../components/LedgerPanel";
@@ -49,7 +49,13 @@ function Setup({ onReady }: { onReady: (keys: OfficeKeys, kit: KeyKit, office: O
       const { keys, kit, office } = await createOffice(name, domain, pass);
       onReady(keys, kit, office);
     } catch (e) {
-      setError(e instanceof ApiError ? `Could not register (${e.code}).` : "Key generation failed.");
+      setError(
+        e instanceof ApiError && (e.code === "office_exists" || e.code === "office_locked")
+          ? "This domain is already registered to a different key. Restore your recovery kit, or publish the new key's fingerprint in DNS first."
+          : e instanceof ApiError
+            ? `Could not register (${e.code}).`
+            : "Key generation failed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -157,9 +163,14 @@ function OfficeHeader({ office, kit, onOffice }: { office: OfficeView; kit: KeyK
       }
       subtitle={office.domain}
       right={
-        <Button variant="ghost" onClick={() => downloadJson(`recovery-kit-${office.domain}.json`, kit)}>
-          Download recovery kit
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" title="Public keys only. Publish at /.well-known/handoff.json" onClick={() => downloadJson("handoff.json", kit.bundle)}>
+            Download handoff.json
+          </Button>
+          <Button variant="ghost" onClick={() => downloadJson(`recovery-kit-${office.domain}.json`, kit)}>
+            Download recovery kit
+          </Button>
+        </div>
       }
     >
       <div className="grid gap-5 md:grid-cols-2">
@@ -169,7 +180,7 @@ function OfficeHeader({ office, kit, onOffice }: { office: OfficeView; kit: KeyK
           <p className="mt-3 font-mono text-[11px] text-slate-500">fingerprint {office.fingerprint.slice(0, 32)}…</p>
         </div>
         {!office.verified && (
-          <div className="rounded-xl bg-slate-950/60 p-3 ring-1 ring-white/10">
+          <div className="rounded-xl bg-slate-950/60 p-3 ring-1 ring-ink/10">
             <p className="text-xs uppercase tracking-wider text-slate-400">Verify your domain · add this DNS TXT record</p>
             <p className="mt-2 font-mono text-xs text-slate-300">
               <span className="text-slate-500">name </span>
@@ -216,7 +227,7 @@ function NewRequest({ token, onCreated }: { token: string; onCreated: () => void
           <button
             key={item}
             onClick={() => toggle(item)}
-            className={`rounded-full px-3 py-1 text-sm ring-1 transition ${items.includes(item) ? "bg-jedi-500/20 text-jedi-400 ring-jedi-400/40" : "bg-white/5 text-slate-400 ring-white/10 hover:text-slate-200"}`}
+            className={`rounded-full px-3 py-1 text-sm ring-1 transition ${items.includes(item) ? "bg-jedi-500/20 text-jedi-400 ring-jedi-400/40" : "bg-ink/5 text-slate-400 ring-ink/10 hover:text-slate-200"}`}
           >
             {items.includes(item) ? "✓ " : "+ "}
             {item}
@@ -236,7 +247,7 @@ function NewRequest({ token, onCreated }: { token: string; onCreated: () => void
           }}
         />
         <Input placeholder="Note to client (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-        <select value={expiry} onChange={(e) => setExpiry(Number(e.target.value))} className="rounded-lg bg-slate-950/80 px-3 py-2 text-sm ring-1 ring-white/10">
+        <select value={expiry} onChange={(e) => setExpiry(Number(e.target.value))} className="rounded-lg bg-slate-950/80 px-3 py-2 text-sm ring-1 ring-ink/10">
           {EXPIRY.map((x) => (
             <option key={x.minutes} value={x.minutes}>
               Link valid {x.label}
@@ -263,7 +274,7 @@ function RequestLinks({ requests }: { requests: OfficeRequest[] }) {
       <div className="flex flex-wrap items-center gap-5">
         <Qr value={link} />
         <div className="min-w-0 flex-1 space-y-3">
-          <p className="break-all rounded-lg bg-slate-950/70 px-3 py-2 font-mono text-xs text-slate-300 ring-1 ring-white/10">{link}</p>
+          <p className="break-all rounded-lg bg-slate-950/70 px-3 py-2 font-mono text-xs text-slate-300 ring-1 ring-ink/10">{link}</p>
           <div className="flex gap-2">
             <Button
               variant="ghost"
@@ -307,8 +318,8 @@ function Inbox({ handoffs, onOpen, opening }: { handoffs: HandoffSummary[]; onOp
         {handoffs.map((h) => {
           const live = h.status === "stored" || h.status === "opened";
           return (
-            <div key={h.id} className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 ring-1 transition ${live ? "bg-white/[0.04] ring-white/10" : "bg-white/[0.01] opacity-60 ring-white/5"}`}>
-              <span className="text-xl">{live ? "🔒" : h.status === "revoked" ? "⛔" : "⌛"}</span>
+            <div key={h.id} className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 ring-1 transition ${live ? "bg-ink/[0.04] ring-ink/10" : "bg-ink/[0.01] opacity-60 ring-ink/5"}`}>
+              <span className="text-xl"><Icon name={live ? "lock" : h.status === "revoked" ? "x" : "alert"} className={`h-5 w-5 ${live ? "text-neel-600" : "text-ink-3"}`} /></span>
               <div className="min-w-0">
                 <p className={`font-mono text-sm ${live ? "text-slate-200" : "text-slate-500 line-through"}`}>{h.id}</p>
                 <p className="text-xs text-slate-500">

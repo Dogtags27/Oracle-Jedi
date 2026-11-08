@@ -3,7 +3,7 @@ import type { Meta } from "@oj/core";
 import { bytes } from "../lib/format";
 import { Badge, Button } from "./ui";
 
-export function Viewer({ data, meta, onClose }: { data: Uint8Array; meta: Meta; onClose: () => void }) {
+export function Viewer({ data, meta, onClose, receipt = true }: { data: Uint8Array; meta: Meta; onClose: () => void; receipt?: boolean }) {
   const url = useMemo(() => URL.createObjectURL(new Blob([data as unknown as BlobPart], { type: meta.type })), [data, meta.type]);
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
   const isImage = meta.type.startsWith("image/");
@@ -11,15 +11,16 @@ export function Viewer({ data, meta, onClose }: { data: Uint8Array; meta: Meta; 
   const isText = meta.type.startsWith("text/");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={onClose}>
-      <div className="flex max-h-full w-full max-w-4xl flex-col rounded-2xl bg-slate-900 ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-3">
+      <div className="flex max-h-full w-full max-w-4xl flex-col rounded-2xl bg-slate-900 ring-1 ring-ink/10" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 border-b border-ink/10 px-5 py-3">
           <div className="min-w-0">
             <p className="truncate font-medium">{meta.name}</p>
             <p className="text-xs text-slate-400">
               {meta.type} · {bytes(meta.size)} · decrypted locally in this tab
             </p>
           </div>
-          <Badge tone="green">Signed open receipt sent</Badge>
+          {receipt && <Badge tone="green">Signed open receipt sent</Badge>}
+          {meta.redactions && <Badge tone={meta.redactions.verified ? "blue" : "amber"}>{meta.redactions.verified ? "Trimmed by sender · verified" : "Trimmed by sender"}</Badge>}
           <div className="ml-auto flex gap-2">
             <a href={url} download={meta.name}>
               <Button variant="ghost">Download</Button>

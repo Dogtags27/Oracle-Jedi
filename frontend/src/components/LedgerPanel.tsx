@@ -22,7 +22,7 @@ export function LedgerPanel({ title = "Privacy Ledger · everything that left th
       <div className="max-h-72 space-y-1 overflow-auto font-mono text-xs">
         {entries.length === 0 && <p className="text-slate-500">Nothing has left this device yet.</p>}
         {entries.map((e, i) => (
-          <button key={i} onClick={() => setOpen(open === i ? null : i)} className="block w-full rounded-md bg-white/[0.03] px-2 py-1.5 text-left hover:bg-white/[0.06]">
+          <button key={i} onClick={() => setOpen(open === i ? null : i)} className="block w-full rounded-md bg-ink/[0.03] px-2 py-1.5 text-left hover:bg-ink/[0.06]">
             <div className="flex items-center gap-2">
               <span className={e.method === "PUT" ? "text-saber" : e.method === "DELETE" ? "text-sith" : "text-jedi-400"}>{e.method}</span>
               <span className="truncate text-slate-300">{where(e.url)}</span>

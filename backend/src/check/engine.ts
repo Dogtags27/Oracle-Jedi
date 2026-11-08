@@ -1,5 +1,7 @@
 import {
+  KNOWN_PORTALS,
   PERSONAL_EMAIL_DOMAINS,
+  isLookalike,
   findPhones,
   stripMarkup,
   normalizePhone,
@@ -22,7 +24,6 @@ const DIRECTORIES = new Set([
 ]);
 
 const PORTAL_HINT = /portal|upload|secure|client|login|sharefile|taxdome|smartvault|canopy|verifyle|liscio|onvio|citrix/i;
-const KNOWN_PORTALS = new Set(["sharefile.com", "taxdome.com", "smartvault.com", "canopytax.com", "verifyle.com", "liscio.me", "onvio.us", "citrixdata.com", "docusign.net", "docusign.com"]);
 const STOP = new Set(["the", "and", "of", "inc", "llc", "co", "company", "group", "services", "a"]);
 
 const tokens = (s: string) =>
@@ -34,13 +35,25 @@ const tokens = (s: string) =>
 
 const ws = (s: string) => s.replace(/\s+/g, " ").trim();
 
+const HIDDEN_EMAIL = "[email hidden by site]";
+
+const unescapeMarkdown = (s: string) => s.replace(/\\([\\`*_{}[\]()#+\-.!|<>~])/g, "$1");
+
 function quoteAround(text: string, needle: string, radius = 80): string | null {
-  const i = text.toLowerCase().indexOf(needle.toLowerCase());
+  const lower = text.toLowerCase();
+  const i = lower.indexOf(needle.toLowerCase());
   if (i < 0) return null;
-  let start = Math.max(0, i - radius);
-  let end = Math.min(text.length, i + needle.length + radius);
-  while (start > 0 && /\S/.test(text[start - 1])) start--;
-  while (end < text.length && /\S/.test(text[end])) end++;
+  let lineStart = text.lastIndexOf("\n", i) + 1;
+  let lineEnd = text.indexOf("\n", i + needle.length);
+  if (lineEnd < 0) lineEnd = text.length;
+  const hiddenBefore = lower.lastIndexOf(HIDDEN_EMAIL, i);
+  if (hiddenBefore >= lineStart) lineStart = hiddenBefore + HIDDEN_EMAIL.length;
+  const hiddenAfter = lower.indexOf(HIDDEN_EMAIL, i + needle.length);
+  if (hiddenAfter >= 0 && hiddenAfter < lineEnd) lineEnd = hiddenAfter;
+  let start = Math.max(lineStart, i - radius);
+  let end = Math.min(lineEnd, i + needle.length + radius);
+  while (start > lineStart && /\S/.test(text[start - 1])) start--;
+  while (end < lineEnd && /\S/.test(text[end])) end++;
   return ws(text.slice(start, end)).slice(0, 260);
 }
 
@@ -93,9 +106,8 @@ async function cached(key: string): Promise<Discovery | null> {
   return ageH < env.checkCacheTtlHours ? (data.result as Discovery) : null;
 }
 
-async function discover(org: string, locationHint: string | undefined, knownDomain: string | undefined, deadline: number): Promise<Discovery | null> {
+async function discover(org: string, locationHint: string | undefined, knownDomain: string | undefined, deadline: number, providers: string[]): Promise<Discovery | null> {
   const signal = () => AbortSignal.timeout(Math.max(500, deadline - Date.now()));
-  const providers: string[] = [];
   let exaPages: WebPage[] = [];
   let official = knownDomain ? { domain: knownDomain, title: org } : null;
   const query = `${org}${locationHint ? ` ${locationHint}` : ""} official website contact`;
@@ -146,20 +158,21 @@ async function discover(org: string, locationHint: string | undefined, knownDoma
 }
 
 async function registry(org: string, senderDomain: string) {
-  const byDomain = senderDomain ? await db().from("offices").select("*").eq("domain", senderDomain).maybeSingle() : { data: null };
-  if (byDomain.data) return byDomain.data;
-  const byName = org
-    ? await db()
-        .from("offices")
-        .select("*")
-        .ilike("name", org.trim())
-        .not("domain", "like", "%.test")
-        .order("dns_verified_at", { ascending: false, nullsFirst: false })
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
-  return byName.data;
+  const [byDomain, byName] = await Promise.all([
+    senderDomain ? db().from("offices").select("*").eq("domain", senderDomain).maybeSingle() : Promise.resolve({ data: null }),
+    org
+      ? db()
+          .from("offices")
+          .select("*")
+          .ilike("name", org.trim())
+          .not("domain", "like", "%.test")
+          .order("dns_verified_at", { ascending: false, nullsFirst: false })
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  return byDomain.data ?? byName.data;
 }
 
 function explanation(verdict: Verdict, req: CheckRequest, officialDomain?: string, phone?: string) {
@@ -180,13 +193,14 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
   const evidence: Evidence[] = [];
   const now = () => new Date().toISOString();
 
-  const office = await registry(req.claimedOrg, isPersonal ? "" : senderDomain);
   const key = `${req.claimedOrg.trim().toLowerCase()}|${(req.locationHint ?? "").trim().toLowerCase()}`;
+  const [office, plainCache] = await Promise.all([registry(req.claimedOrg, isPersonal ? "" : senderDomain), cached(key)]);
   let source: CheckResponse["source"] = office ? "registry" : "live";
-  let found = await cached(office ? `registry:${office.domain}` : key);
+  const providersUsed: string[] = [];
+  let found = office ? await cached(`registry:${office.domain}`) : plainCache;
   if (found) source = office ? "registry" : "cache";
   else {
-    found = await discover(req.claimedOrg, req.locationHint, office?.domain, deadline);
+    found = await discover(req.claimedOrg, req.locationHint, office?.domain, deadline, providersUsed);
     if (found && found.pages.length) {
       await db().from("check_cache").upsert({ org_key: office ? `registry:${office.domain}` : key, result: found, fetched_at: now() });
     }
@@ -204,7 +218,7 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
 
   const officialDomain = office?.domain ?? found?.officialDomain;
   const rawAll = (found?.pages ?? []).map((p) => p.text).join("\n");
-  const pages = (found?.pages ?? []).map((p) => ({ ...p, text: stripMarkup(p.text) }));
+  const pages = (found?.pages ?? []).map((p) => ({ ...p, text: stripMarkup(unescapeMarkdown(p.text)) }));
   const all = pages.map((p) => p.text).join("\n");
   const exaText = stripMarkup((found?.exaPages ?? []).map((p) => p.text).join("\n"));
   const emailsOnSite = [...new Set((all.match(/[\w.+-]+@[\w-]+(\.[a-z]{2,})+/gi) ?? []).map((e) => e.toLowerCase()))];
@@ -248,8 +262,7 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
     if (isPersonal) signals.push("Sent from a free personal email account");
     if (req.phones.length && !phoneHits.length && phonesOnSite.length) signals.push("Phone number in the message isn't on the official site");
   }
-  const officialLabel = officialDomain?.split(".")[0].replace(/-/g, "") ?? "";
-  const lookalike = (d: string) => Boolean(officialLabel.length > 3 && d !== officialDomain && d.replace(/[-.]/g, "").includes(officialLabel));
+  const lookalike = (d: string) => Boolean(officialDomain && isLookalike(d, officialDomain));
   if (senderDomain && lookalike(senderDomain)) signals.splice(1, 0, `${senderDomain} is a look-alike imitating ${officialDomain}`);
   for (const d of req.linkDomains) {
     if (!officialDomain || d === officialDomain || KNOWN_PORTALS.has(d)) continue;
@@ -272,6 +285,6 @@ export async function runCheck(req: CheckRequest): Promise<CheckResponse> {
     explanation: explanation(verdict, req, officialDomain, officialPhone),
     latencyMs: Date.now() - started,
     source,
-    providers: found?.providers ?? [],
+    providers: found?.providers ?? providersUsed,
   };
 }

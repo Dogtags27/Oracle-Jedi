@@ -27,6 +27,9 @@ export interface Finding {
 export interface RedactionSummary {
   removed: Partial<Record<FindingKind, number>>;
   verified: boolean;
+  boxes?: number;
+  pagesRemoved?: number;
+  metadataRemoved?: boolean;
 }
 
 export interface Meta {

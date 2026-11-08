@@ -1,0 +1,16 @@
+*
+!package.json
+!package-lock.json
+!core/package.json
+!core/src/
+!backend/package.json
+!backend/src/
+!frontend/package.json
+!extension/package.json
+**/.env
+**/.env.*
+**/*.test.ts
+**/*.pem
+**/*.key
+**/recovery-kit*.json
+**/node_modules

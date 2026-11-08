@@ -42,6 +42,14 @@ try {
 
   const file = await client.$("input[type=file]");
   await file.uploadFile(docPath);
+  await client.waitForSelector(text("Contains 1 Social Security number"), { timeout: 15000 });
+  await client.click('button[data-action="trim"]');
+  await client.waitForSelector(text("They asked for"), { timeout: 10000 });
+  await client.click(`button${text("Trim & verify")}`);
+  await client.waitForSelector(text("Verified redacted"), { timeout: 30000 }).catch(async (e) => { console.log("CLIENT:", (await client.evaluate(() => document.body.innerText.slice(document.body.innerText.indexOf("Trim · send")))).slice(0, 1500), errors); throw e; });
+  await client.click(`button${text("Use trimmed file")}`);
+  await client.waitForSelector(text("Trimmed and verified"), { timeout: 10000 });
+  ok("client trimmed the SSN on-device (sees the office checklist, re-scan verified)");
   await client.click(text("Seal & send"));
   await client.waitForSelector(text("receipt verified"), { timeout: 30000 });
   ok("client sealed + uploaded; server receipt verified in the browser");
@@ -54,9 +62,10 @@ try {
   await office.waitForSelector(text("Decrypt"), { timeout: 15000 });
   await office.click(`button${text("Decrypt")}`);
   await office.waitForSelector(text("decrypted locally in this tab"), { timeout: 30000 });
-  const shown = await office.evaluate(() => document.body.innerText.includes("987-65-4321"));
-  if (!shown) throw new Error("decrypted content not shown");
-  ok("office decrypted in-tab and sees the document");
+  const seen = await office.evaluate(() => document.body.innerText);
+  if (seen.includes("987-65-4321")) throw new Error("office saw the SSN the client trimmed");
+  if (!seen.includes("Wages 84,200.00") || !seen.includes("███") || !seen.includes("Trimmed by sender · verified")) throw new Error("trimmed document not shown");
+  ok("office decrypted in-tab: sees the wages, not the SSN, with \"Trimmed by sender · verified\"");
   await office.click(text("Close"));
 
   await client.bringToFront();

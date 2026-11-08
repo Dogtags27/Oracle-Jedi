@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maple Street Tax | Neighborhood tax preparation</title>
+<meta name="description" content="Maple Street Tax is a fictional demo office used to demonstrate Avaran (HANDOFF).">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<p class="demo-banner">Demo site. Maple Street Tax is a fictional office created for the Avaran (HANDOFF) hackathon project. It is not a real business.</p>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/"><span class="leaf" aria-hidden="true"></span>Maple Street Tax</a>
+    <nav aria-label="Main">
+      <a href="/" aria-current="page">Home</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Neighborhood tax preparation, done carefully.</h1>
+    <p class="lead">Individual returns, small-business bookkeeping and year-round answers from a two-person office on Maple Street.</p>
+  </section>
+
+  <section class="card accent" id="upload">
+    <h2>Upload documents securely</h2>
+    <p>We collect W-2s, 1099s and photo IDs only through our secure upload page:</p>
+    <p class="big-link"><a href="https://{{DOMAIN}}/secure-upload">https://{{DOMAIN}}/secure-upload</a></p>
+    <p>Your files are sealed on your own device before they leave it, and only our office key can open them.</p>
+  </section>
+
+  <section class="card">
+    <h2>How we ask for documents</h2>
+    <ul>
+      <li>Requests come only from frontdesk@{{DOMAIN}} or from our office Gmail, {{OFFICE_GMAIL}}.</li>
+      <li>We never ask you to upload documents on any other website.</li>
+      <li>We never ask for documents by text message, and we never rush you.</li>
+      <li>Not sure a message is from us? Call the number on this page, not the number in the message.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>Contact</h2>
+    <p>Phone: <a href="tel:+16175550118">(617) 555-0118</a>, Monday to Friday, 9 am to 5 pm.</p>
+    <p>Email: <a href="mailto:frontdesk@{{DOMAIN}}">frontdesk@{{DOMAIN}}</a>. We reply within one business day.</p>
+    <p><a href="/contact">All contact details</a></p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Maple Street Tax is fictional. This page exists only to demonstrate how Avaran checks who is asking for documents.</p>
+    <p>Office public key: <a href="/.well-known/handoff.json">/.well-known/handoff.json</a></p>
+  </div>
+</footer>
+</body>
+</html>

@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./links": "./src/links.ts",
+    "./request": "./src/request.ts",
+    "./detect": "./src/detect.ts",
+    "./trim": "./src/trim.ts",
+    "./trim-ui": "./src/trim-ui.tsx",
+    "./clicks": "./src/clicks.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -13,6 +19,11 @@
   "dependencies": {
     "@noble/post-quantum": "^0.7.1",
     "hash-wasm": "^4.13.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.4.299",
     "tldts": "^7.4.19"
+  },
+  "peerDependencies": {
+    "react": ">=19"
   }
 }

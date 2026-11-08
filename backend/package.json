@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc -p .",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "eval:check": "tsx scripts/eval-check.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.6",

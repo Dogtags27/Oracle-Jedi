@@ -1,7 +1,13 @@
 import { serve } from "@hono/node-server";
-import { app } from "./app";
-import { env } from "./env";
+import { app, purgeExpired } from "./app";
+import { configured, env } from "./env";
 
 serve({ fetch: app.fetch, port: env.port }, (info) => {
-  console.log(`Oracle Jedi backend on http://localhost:${info.port}/api`);
+  console.log(`Avaran backend on http://localhost:${info.port}/api`);
 });
+
+if (configured.supabaseUrl && configured.supabaseServiceRole) {
+  setInterval(() => {
+    purgeExpired().catch(() => {});
+  }, 60_000).unref();
+}

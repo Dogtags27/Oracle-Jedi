@@ -26,6 +26,15 @@ const SENSITIVE_ITEMS: [RegExp, string][] = [
 
 const ASK_VERBS = /\b(send|upload|attach|provide|submit|forward|reply with|email (us|me)|share|scan)\b/i;
 
+const CREDENTIAL_ITEMS: [RegExp, string][] = [
+  [/\bpass(word|code)\b/i, "Password"],
+  [/\b(one[- ]time|verification|security|login|sign[- ]in|2fa|mfa|authentication|6[- ]digit) (code|pin|number)\b/i, "Login code"],
+  [/\b(verify|confirm|validate|unlock|reactivate|restore|re-?validate) (your )?(account|identity|login|mailbox|email|credentials)\b/i, "Account verification"],
+  [/\b(card|billing|payment|bank) (details|information|info)\b|\bupdate (your )?(payment|billing)\b/i, "Payment details"],
+];
+
+const CREDENTIAL_ACTION = /\b(click|tap|follow|enter|reply|log ?in|sign ?in|visit|open|update|confirm|verify)\b/i;
+
 const PRESSURE: [RegExp, string][] = [
   [/\burgent(ly)?\b|\bimmediately\b|\basap\b/i, "Urgency language"],
   [/within (24|48) hours|by (today|tonight|end of day)|\btoday\b/i, "Tight deadline"],
@@ -47,6 +56,8 @@ export interface ExtractedRequest {
   linkDomains: string[];
   phones: string[];
   pressureSignals: string[];
+  credentialAsks: string[];
+  isCredentialRequest: boolean;
 }
 
 const unique = <T>(items: T[]) => [...new Set(items)];
@@ -104,8 +115,12 @@ export function extractRequest(body: string, from = ""): ExtractedRequest {
   const requestedItems = unique(SENSITIVE_ITEMS.filter(([re]) => re.test(text)).map(([, label]) => label));
   const pressureSignals = unique(PRESSURE.filter(([re]) => re.test(text)).map(([, label]) => label));
   const asks = ASK_VERBS.test(text);
-  const score = requestedItems.length * 2 + (asks ? 2 : 0) + (pressureSignals.length ? 1 : 0);
+  const credentialAsks = unique(CREDENTIAL_ITEMS.filter(([re]) => re.test(text)).map(([, label]) => label));
+  const isCredentialRequest = credentialAsks.length > 0 && (asks || CREDENTIAL_ACTION.test(text)) && (urls.length > 0 || pressureSignals.length > 0 || credentialAsks.length > 1);
+  const score = requestedItems.length * 2 + (asks ? 2 : 0) + (pressureSignals.length ? 1 : 0) + credentialAsks.length * 2;
   return {
+    credentialAsks,
+    isCredentialRequest,
     isDocumentRequest: requestedItems.length > 0 && (asks || requestedItems.length > 1),
     score,
     requestedItems,

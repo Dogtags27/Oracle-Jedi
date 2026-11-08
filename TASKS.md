@@ -1,4 +1,12 @@
-# Oracle Jedi (HANDOFF): task list
+# Avaran (HANDOFF): task list
+
+> **Status, Sun ~3:30 AM:** G1–G4 code complete and tested. G5 code complete (Breach Day, evals, privacy assertions).
+> - **Tests:** unit 26/26 · API smoke 14/14 · web UI smoke 11/11 · extension E2E 20/20 · privacy (TS6) 9/9. Evals EV1–EV5 are in `evals/results/*.md`. Run everything with `npm run test:all`.
+> - **Done since G2:** E1–E9, C6, C7, W5 (Trim, in the vault and on `/r`), W7 `/h/:id`, W8 `/sent`, W9 Breach Day, B10 (in-process purge), B12 (rate limits), TS2, TS6, EV1–EV6, S6/D1 fixtures, E13 docs.
+> - **Left, all on people:** S4/I3 domain and demo office ([docs/DEMO_SETUP.md](docs/DEMO_SETUP.md)) · I1/I2 deploy: AWS ECS Express + Vercel ([docs/DEPLOY.md](docs/DEPLOY.md)) · TS5 real-Gmail pass · D2/D3 test inboxes · D4–D7 deck, video, Devpost, rehearsals.
+> - **New (Sun ~4:15 AM): Sheathe**, screen-share privacy ([../PLAN_V10_SHEATHE.md](../PLAN_V10_SHEATHE.md)). SH1–SH5 and SH8 are built, and `npm run smoke:sheathe` passes 14/14. SH6 (runtime optional permissions) was replaced by static permissions; SH7 (Slack, Telegram and other adapters) is post-hackathon. WhatsApp's page anchors still need the real-site check at the end.
+> - **New (Sun ~5 AM): Click Guard**, which flags and stops deceptive buttons and links (fake Close/Cancel, hidden pop-ups, invisible overlays, scripted redirects, decoy downloads, notification traps). `npm run smoke:guard` passes 14/14. "Guard every site" uses optional `<all_urls>`; "Check this page" uses `activeTab`.
+> - **Not built (cut-order stretch):** E10 Upload Guard, E11 Gemini Nano, E12 OCR, K9/K10, W12, I4 screenshot.
 
 > **Design:** `../PLAN_V9_TECH.md` · **Demo:** `../PLAN_V8.md`
 >
@@ -101,7 +109,7 @@
 
 | ID | Task | Owner | Pri | Est | Depends | Done when |
 |---|---|---|---|---|---|---|
-| W1 | App shell: Tailwind + shadcn/ui, Oracle Jedi branding | D | MUST | 30m | S1 | Shared layout and components |
+| W1 | App shell: Tailwind + shadcn/ui, Avaran branding | D | MUST | 30m | S1 | Shared layout and components |
 | W2 | Office onboarding: sign in → generate keys (passphrase) → download recovery kit → DNS TXT instructions → verified badge + safety words | D+A | MUST | 60m | B8, C3, C4 | Maple Street Tax onboarded end to end |
 | W3 | Request builder: checklist + expiry → link + QR code | D | MUST | 30m | B9 | Shareable link and QR |
 | W4 | Client page `/r/:id`: verified badge + safety words → add documents → **Trim** → **Seal** → receipt; revoke token saved locally | D | MUST | 60m | C1, B3, B4 | Judge can do it from a phone |

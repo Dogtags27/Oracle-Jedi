@@ -16,7 +16,17 @@
     "test": "npm test -w core",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "smoke": "npm run smoke -w backend",
-    "smoke:ui": "node scripts/ui-smoke.mjs"
+    "smoke:ui": "node scripts/ui-smoke.mjs",
+    "smoke:ext": "npm run build -w extension && tsx scripts/ext-smoke.ts",
+    "fixtures": "tsx scripts/make-fixtures.ts",
+    "eval:detect": "tsx scripts/eval-detect.ts",
+    "eval:trim": "tsx scripts/eval-browser.ts",
+    "eval:check": "npm run eval:check -w backend",
+    "privacy": "tsx scripts/privacy-check.ts",
+    "test:all": "npm test && npm run smoke && npm run smoke:ui && npm run smoke:ext && npm run smoke:sheathe && npm run smoke:veil && npm run smoke:guard && npm run privacy && npm run eval:detect && npm run eval:trim",
+    "smoke:sheathe": "npm run build -w extension && tsx scripts/sheathe-smoke.ts",
+    "smoke:veil": "npm run build -w extension && tsx scripts/veil-smoke.ts",
+    "smoke:guard": "npm run build -w extension && tsx scripts/guard-smoke.ts"
   },
   "engines": {
     "node": ">=20"

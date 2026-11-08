@@ -1,4 +1,4 @@
-import { newSecretToken, revokeTokenHash, sealToOffice, sha256Hex, verifyBundle, verifyObject } from "@oj/core";
+import { newSecretToken, revokeTokenHash, sealToOffice, sha256Hex, verifyBundle, verifyObject, type RedactionSummary } from "@oj/core";
 import { api, getServerKey, putBytes } from "./api";
 import type { HandoffSummary, PublicRequest, Receipt } from "./types";
 
@@ -37,7 +37,7 @@ export async function checkOfficeBundle(request: PublicRequest) {
 }
 
 export async function sendToOffice(
-  file: { name: string; type: string; bytes: Uint8Array },
+  file: { name: string; type: string; bytes: Uint8Array; redactions?: RedactionSummary },
   request: PublicRequest,
   ttlMinutes: number,
   onStage: (stage: Stage) => void,
@@ -56,7 +56,7 @@ export async function sendToOffice(
   onStage("encrypting");
   const sealed = await sealToOffice(
     file.bytes,
-    { name: file.name, type: file.type || "application/octet-stream", size: file.bytes.length },
+    { name: file.name, type: file.type || "application/octet-stream", size: file.bytes.length, ...(file.redactions ? { redactions: file.redactions } : {}) },
     request.office.bundle,
     { id: created.id, ttlMinutes },
   );

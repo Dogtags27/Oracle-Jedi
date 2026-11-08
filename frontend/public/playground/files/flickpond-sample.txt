@@ -1,0 +1,6 @@
+flickpond sample download
+
+This is the "real" download from the Avaran Click Guard demo. It came from the same site as the page you were on.
+flickpond is a made-up site, so there is no movie here.
+
+With Click Guard on, this download still works. Only the extra ad tab it tried to open is blocked.

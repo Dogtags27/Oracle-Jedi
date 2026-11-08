@@ -32,16 +32,20 @@ offices.post("/", async (c) => {
   const bundle = (await parseBody(c, bundleSchema)) as OfficeKeyBundle;
   const check = await verifyBundle(bundle);
   if (!check.ok) return c.json({ error: check.reason }, 400);
+  if (bundle.domain !== normalizeDomain(bundle.domain) || !bundle.domain.includes(".")) return c.json({ error: "bad_domain" }, 400);
   const existing = await getOffice(bundle.domain);
-  if (existing?.dns_verified_at && existing.fingerprint !== check.fingerprint) {
-    return c.json({ error: "office_locked" }, 409);
+  let provenByDns = false;
+  if (existing && existing.fingerprint !== check.fingerprint) {
+    const records = await lookupTxt(`_handoff.${bundle.domain}`).catch(() => [] as string[]);
+    provenByDns = records.some((r) => r.includes(`fp=${check.fingerprint}`));
+    if (!provenByDns) return c.json({ error: existing.dns_verified_at ? "office_locked" : "office_exists" }, 409);
   }
   const row = {
     domain: bundle.domain,
     name: bundle.name,
     bundle,
     fingerprint: check.fingerprint,
-    dns_verified_at: existing?.fingerprint === check.fingerprint ? existing.dns_verified_at : null,
+    dns_verified_at: existing?.fingerprint === check.fingerprint ? existing.dns_verified_at : provenByDns ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   };
   const { error } = await db().from("offices").upsert(row);

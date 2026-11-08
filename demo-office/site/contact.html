@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact | Maple Street Tax</title>
+<meta name="description" content="Official phone, email and secure upload page for Maple Street Tax, a fictional demo office.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<p class="demo-banner">Demo site. Maple Street Tax is a fictional office created for the Avaran (HANDOFF) hackathon project. It is not a real business.</p>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/"><span class="leaf" aria-hidden="true"></span>Maple Street Tax</a>
+    <nav aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/contact" aria-current="page">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Contact Maple Street Tax</h1>
+    <p class="lead">These are our only official contact details. If a message uses anything else, it is not from us.</p>
+  </section>
+
+  <section class="card">
+    <h2>Phone</h2>
+    <p>Call us at <a href="tel:+16175550118">(617) 555-0118</a>, Monday to Friday, 9 am to 5 pm. This is our only phone number.</p>
+  </section>
+
+  <section class="card">
+    <h2>Email</h2>
+    <p>Email our front desk at <a href="mailto:frontdesk@{{DOMAIN}}">frontdesk@{{DOMAIN}}</a>. We reply within one business day.</p>
+    <p>We are a tiny office, so we also answer from our office Gmail account, <a href="mailto:{{OFFICE_GMAIL}}">{{OFFICE_GMAIL}}</a>. Both addresses are official. No other address is.</p>
+  </section>
+
+  <section class="card accent">
+    <h2>Send documents</h2>
+    <p>Upload documents securely at <a href="https://{{DOMAIN}}/secure-upload">https://{{DOMAIN}}/secure-upload</a>.</p>
+    <p>Please do not email W-2s, IDs or bank statements as attachments.</p>
+  </section>
+
+  <section class="card">
+    <h2>Visit</h2>
+    <p>Maple Street, Suite 2. By appointment only. The address is fictional, like the office.</p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Maple Street Tax is fictional. This page exists only to demonstrate how Avaran checks who is asking for documents.</p>
+    <p>Office public key: <a href="/.well-known/handoff.json">/.well-known/handoff.json</a></p>
+  </div>
+</footer>
+</body>
+</html>

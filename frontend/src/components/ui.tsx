@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SVGProps } from "react";
 import type { HandoffStatus } from "@oj/core";
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
@@ -7,15 +7,15 @@ type Variant = "primary" | "ghost" | "danger" | "saber";
 
 export function Button({ variant = "primary", className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   const styles: Record<Variant, string> = {
-    primary: "bg-jedi-500 hover:bg-jedi-400 text-white",
-    saber: "bg-saber/90 hover:bg-saber text-slate-950 shadow-[0_0_24px_rgba(57,255,158,0.35)]",
-    ghost: "bg-white/5 hover:bg-white/10 text-slate-200 ring-1 ring-white/10",
-    danger: "bg-sith/90 hover:bg-sith text-white",
+    primary: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
+    saber: "bg-neel-700 text-card hover:bg-neel-800 border border-neel-800",
+    ghost: "bg-card text-ink border border-line-2 hover:bg-paper-2 hover:border-ink-3/40",
+    danger: "bg-geru-600 text-card hover:bg-geru-700 border border-geru-700",
   };
   return (
     <button
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-[15px] font-medium leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-45",
         styles[variant],
         className,
       )}
@@ -26,12 +26,12 @@ export function Button({ variant = "primary", className, ...props }: ButtonHTMLA
 
 export function Card({ title, subtitle, children, className, right }: { title?: ReactNode; subtitle?: ReactNode; children?: ReactNode; className?: string; right?: ReactNode }) {
   return (
-    <section className={cx("rounded-2xl bg-slate-900/70 p-5 ring-1 ring-white/10 backdrop-blur", className)}>
+    <section className={cx("rounded-xl border border-line bg-card p-6 shadow-[0_1px_2px_rgba(30,27,23,0.04)]", className)}>
       {(title || right) && (
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            {title && <h2 className="text-base font-semibold text-slate-100">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {title && <h2 className="text-[19px] font-semibold leading-snug text-ink">{title}</h2>}
+            {subtitle && <p className="mt-1 text-[14.5px] text-ink-3">{subtitle}</p>}
           </div>
           {right}
         </div>
@@ -44,39 +44,47 @@ export function Card({ title, subtitle, children, className, right }: { title?: 
 export function Input({ label, hint, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string }) {
   return (
     <label className="block">
-      {label && <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">{label}</span>}
+      {label && <span className="mb-1.5 block text-[13px] font-medium text-ink-2">{label}</span>}
       <input
         className={cx(
-          "w-full rounded-lg bg-slate-950/80 px-3 py-2 text-sm text-slate-100 ring-1 ring-white/10 outline-none placeholder:text-slate-600 focus:ring-jedi-400",
+          "w-full rounded-lg border border-line-2 bg-card px-3 py-2 text-[15px] text-ink outline-none transition-colors placeholder:text-ink-3/70 focus:border-neel-600 focus:ring-2 focus:ring-neel-100",
           className,
         )}
         {...props}
       />
-      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-[13px] text-ink-3">{hint}</span>}
     </label>
   );
 }
 
-export function Badge({ tone = "slate", children }: { tone?: "slate" | "green" | "red" | "blue" | "amber"; children: ReactNode }) {
-  const tones = {
-    slate: "bg-white/5 text-slate-300 ring-white/10",
-    green: "bg-saber/10 text-saber ring-saber/30",
-    red: "bg-sith/10 text-sith ring-sith/30",
-    blue: "bg-jedi-500/10 text-jedi-400 ring-jedi-400/30",
-    amber: "bg-amber-400/10 text-amber-300 ring-amber-300/30",
+type Tone = "slate" | "green" | "red" | "blue" | "amber";
+
+export function Badge({ tone = "slate", children }: { tone?: Tone; children: ReactNode }) {
+  const tones: Record<Tone, string> = {
+    slate: "bg-paper-2 text-ink-2 border-line",
+    green: "bg-neem-50 text-neem-700 border-neem-200",
+    red: "bg-geru-50 text-geru-700 border-geru-200",
+    blue: "bg-neel-50 text-neel-700 border-neel-200",
+    amber: "bg-haldi-50 text-haldi-700 border-haldi-200",
   };
-  return <span className={cx("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1", tones[tone])}>{children}</span>;
+  return <span className={cx("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-medium leading-5", tones[tone])}>{children}</span>;
 }
 
 export function VerifiedBadge({ verified }: { verified: boolean }) {
-  return verified ? <Badge tone="green">✓ Domain verified</Badge> : <Badge tone="amber">Domain not yet verified</Badge>;
+  return verified ? (
+    <Badge tone="green">
+      <Icon name="check" className="h-3.5 w-3.5" /> Domain verified
+    </Badge>
+  ) : (
+    <Badge tone="amber">Domain not yet verified</Badge>
+  );
 }
 
 export function SafetyWords({ words }: { words: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {words.map((w, i) => (
-        <span key={i} className="rounded-md bg-jedi-500/10 px-2 py-1 font-mono text-xs text-jedi-400 ring-1 ring-jedi-400/20">
+        <span key={i} className="rounded-md border border-neel-200 bg-neel-50 px-2 py-0.5 font-mono text-[13px] text-neel-700">
           {w}
         </span>
       ))}
@@ -85,7 +93,7 @@ export function SafetyWords({ words }: { words: string[] }) {
 }
 
 export function StatusChip({ status }: { status: HandoffStatus }) {
-  const map: Record<HandoffStatus, { tone: "slate" | "green" | "red" | "blue" | "amber"; label: string }> = {
+  const map: Record<HandoffStatus, { tone: Tone; label: string }> = {
     pending: { tone: "slate", label: "Pending" },
     stored: { tone: "blue", label: "Sealed · waiting" },
     opened: { tone: "green", label: "Opened" },
@@ -96,9 +104,91 @@ export function StatusChip({ status }: { status: HandoffStatus }) {
 }
 
 export function Spinner() {
-  return <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />;
+  return <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current/25 border-t-current" />;
 }
 
 export function PqTag() {
-  return <Badge tone="blue">HANDOFF-PQ1 · ML-KEM-768 + X25519 · ML-DSA-65</Badge>;
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-line-2 bg-card px-2.5 py-0.5 font-mono text-[11.5px] tracking-tight text-ink-2">
+      <Icon name="lock" className="h-3.5 w-3.5 text-neel-600" />
+      HANDOFF-PQ1 · ML-KEM-768 + X25519 · ML-DSA-65
+    </span>
+  );
+}
+
+export type IconName = "lock" | "shield" | "check" | "x" | "alert" | "phone" | "link" | "file" | "scissors" | "key" | "arrow" | "eye" | "inbox";
+
+const PATHS: Record<IconName, ReactNode> = {
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  shield: <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+  alert: (
+    <>
+      <path d="M12 4l9 16H3l9-16z" />
+      <path d="M12 10v4M12 17.5v.5" />
+    </>
+  ),
+  phone: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z" />,
+  link: (
+    <>
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </>
+  ),
+  file: (
+    <>
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v4h4" />
+    </>
+  ),
+  scissors: (
+    <>
+      <circle cx="6" cy="7" r="2.5" />
+      <circle cx="6" cy="17" r="2.5" />
+      <path d="M8 8.5L20 18M8 15.5L20 6" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="14" r="4" />
+      <path d="M11 11l9-9M16 6l3 3" />
+    </>
+  ),
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  eye: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  inbox: (
+    <>
+      <path d="M3 13l3-8h12l3 8v6H3z" />
+      <path d="M3 13h5l1 3h6l1-3h5" />
+    </>
+  ),
+};
+
+export function Icon({ name, className = "h-4 w-4", ...props }: { name: IconName } & SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>
+      {PATHS[name]}
+    </svg>
+  );
+}
+
+export function Mark({ className = "h-8 w-8" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className}>
+      <path d="M5 28V14.5a11 11 0 0 1 22 0V28" stroke="#2b3666" strokeWidth="2.2" />
+      <path d="M10.5 28V16a5.5 5.5 0 0 1 11 0v12" stroke="#b04b32" strokeWidth="2.2" />
+      <path d="M3 28h26" stroke="#2b3666" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
 }
