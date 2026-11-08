@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy policy · Avaran</title>
+    <meta name="description" content="What the Avaran website and Chrome extension collect, send and keep." />
+    <style>
+      :root { color-scheme: light; }
+      body { margin: 0; background: #f6f2ea; color: #1e1b17; font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+      .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+      .brand b { font: 600 20px Georgia, serif; }
+      .brand span { color: #776e62; font-size: 14px; }
+      h1 { font: 600 34px/1.2 Georgia, serif; margin: 28px 0 6px; }
+      h2 { font: 600 21px/1.3 Georgia, serif; margin: 34px 0 8px; }
+      p, li { color: #4b443b; }
+      .meta { color: #776e62; font-size: 14px; }
+      .card { background: #fffdf8; border: 1px solid #e2d9c9; border-radius: 12px; padding: 16px 20px; margin-top: 16px; }
+      table { width: 100%; border-collapse: collapse; font-size: 15px; }
+      th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid #e2d9c9; }
+      th { color: #1e1b17; font-weight: 600; width: 32%; }
+      strong { color: #1e1b17; }
+      a { color: #2b3666; }
+      code { font-size: 14px; background: #eee8dc; border-radius: 4px; padding: 1px 5px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="brand" href="/">
+        <svg width="26" height="28" viewBox="0 0 26 28" aria-hidden="true"><path d="M3 26V12a10 10 0 0 1 20 0v14" fill="none" stroke="#2b3666" stroke-width="2.4"/><path d="M8.5 26V14a4.5 4.5 0 0 1 9 0v12" fill="none" stroke="#b04b32" stroke-width="2.4"/><path d="M1 26.8h24" stroke="#1e1b17" stroke-width="1.6"/></svg>
+        <b>Avaran</b><span>आवरण</span>
+      </a>
+      <h1>Privacy policy</h1>
+      <p class="meta">For the Avaran website and the Avaran Chrome extension. Last updated 8 November 2026.</p>
+
+      <div class="card">
+        <p><strong>The short version.</strong> Avaran never sells or shares your data, shows no ads and runs no analytics or trackers. Your documents are encrypted on your device before they leave it, so our server only ever holds unreadable bytes. Sheathe (screen-share privacy) and Click Guard (deceptive buttons) run entirely on your device and send nothing anywhere.</p>
+      </div>
+
+      <h2>What leaves your device, and why</h2>
+      <table>
+        <tr><th>Check who's asking</th><td>When you check a message, the extension or website sends only the <strong>organization name the message claims</strong>, the <strong>sender's address and domain</strong>, the <strong>domains of links</strong> in it and any <strong>phone numbers</strong>. Never the email body. Our server passes only the organization name and domains to web search providers (Tavily and Exa) to find the organization's official contact details. Results are cached for 24 hours.</td></tr>
+        <tr><th>Seal a document</th><td>The file is trimmed and encrypted in your browser (post-quantum hybrid encryption). Our server stores only the <strong>encrypted bytes</strong> plus their size, expiry time and which office they're for. We cannot read them. For person-to-person links, the server keeps one half of a split key that is useless on its own and is destroyed after five wrong codes.</td></tr>
+        <tr><th>Office verification</th><td>A public DNS lookup of the office's <code>_handoff</code> record, made by your browser to a public DNS-over-HTTPS resolver (cloudflare-dns.com), so you can check the office's key yourself.</td></tr>
+        <tr><th>Offices</th><td>An office's name, website domain and public keys. Its private keys are encrypted with its passphrase and stay in the office's browser.</td></tr>
+      </table>
+
+      <h2>What never leaves your device</h2>
+      <ul>
+        <li><strong>Sheathe</strong> reads nothing and sends nothing. It notices that a meeting page started a screen share and blurs WhatsApp Web and Gmail locally. In Private view it edits the outgoing presentation video inside your browser, before the meeting site sends it. Revealed chats are remembered only on your device.</li>
+        <li><strong>Click Guard</strong> reads the links and buttons of the pages you visit, on your device, to warn you about deceptive ones. It never fetches a link to see where it leads, and its block log stays on your device.</li>
+        <li>Your <strong>Privacy Ledger</strong> (a list of every network request the extension made) and your <strong>Sent</strong> list stay in the extension's local storage.</li>
+        <li>Unencrypted documents, email bodies, chat messages and your browsing history.</li>
+      </ul>
+
+      <h2>How long we keep things</h2>
+      <ul>
+        <li>Encrypted files are deleted when they expire (you choose, up to 30 days) or the moment you revoke them, whichever comes first.</li>
+        <li>Check results are cached for 24 hours.</li>
+        <li>Server logs record only the method, route, status and timing of each request: no bodies, headers or query strings.</li>
+        <li>To stop abuse, the server counts requests per IP address in memory for one minute. These counters are never written to disk.</li>
+        <li>A tamper-evident event log records that a handoff was created, opened, revoked or expired, without its contents.</li>
+      </ul>
+
+      <h2>Chrome Web Store user data disclosure</h2>
+      <p>Avaran's use of information received from Chrome APIs adheres to the <a href="https://developer.chrome.com/docs/webstore/program-policies/limited-use">Chrome Web Store User Data Policy</a>, including the Limited Use requirements. Data is used only to provide the features described above. It is not transferred to third parties except the search providers named above, for the purpose described, and is never used for advertising, credit decisions or any purpose unrelated to these features.</p>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>Revoke any sealed file at any time from the extension's <strong>Sent</strong> tab or your link.</li>
+        <li>Turn off any feature in the side panel. Click Guard's all-sites access is optional and can be handed back to Chrome at any time.</li>
+        <li>Uninstalling the extension deletes everything it stored on your device.</li>
+      </ul>
+
+      <h2>Contact</h2>
+      <p>Questions or deletion requests: open an issue at <a href="https://github.com/Dogtags27/Oracle-Jedi/issues">github.com/Dogtags27/Oracle-Jedi</a>. Avaran is a student project built at HACK1984 (Northeastern University, November 2026).</p>
+    </main>
+  </body>
+</html>

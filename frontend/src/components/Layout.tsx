@@ -52,7 +52,12 @@ export function Layout({ children, wide }: { children: ReactNode; wide?: boolean
           <span>
             <span className="font-display text-ink-2">Avaran</span> · a layer between your documents and everyone else
           </span>
-          <span>Documents are encrypted on your device. Our servers only ever hold ciphertext.</span>
+          <span>
+            Documents are encrypted on your device. Our servers only ever hold ciphertext. ·{" "}
+            <a href="/privacy.html" className="underline decoration-line-2 underline-offset-2 hover:text-ink">
+              Privacy
+            </a>
+          </span>
         </div>
       </footer>
     </div>

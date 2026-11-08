@@ -18,7 +18,9 @@ Commands are for **Windows PowerShell**, run from the repo root (`Oracle-Jedi\`)
 
 No trailing slash on any of them. Buy the domain first if you can (it takes 5 minutes) so `DEMO_OFFICE_DOMAIN` can be set when the AWS service is created.
 
-**Order:** step 1 (Vercel, to learn `APP_URL`) → step 2 (AWS) → step 3 (finish Vercel) → step 4 (extension) → step 5 (smoke test). Do step 2 after the backend feature freeze: every AWS update is a rolling canary deploy that takes several minutes.
+**Order:** step 1 (Vercel, to learn `APP_URL`) → step 2 (AWS) → step 3 (finish Vercel) → step 4 (extension) → step 5 (smoke test).
+
+**AWS account:** right away, create a **25 USD monthly budget** alert (Billing → Budgets → Create budget → Monthly cost budget) so the credits can't run out unnoticed. Expect about 1 to 2 USD a day for ECS plus the load balancer. If the console says ECS Express Mode isn't available on your Free plan, upgrade to the Paid plan (Billing → **Upgrade plan**): your remaining credits carry over and are used first. Do step 2 after the backend feature freeze: every AWS update is a rolling canary deploy that takes several minutes.
 
 ---
 
@@ -242,7 +244,9 @@ Get-Content extension\.output\chrome-mv3\manifest.json
 Get-ChildItem extension\.output\*.zip
 ```
 
-`host_permissions` must be exactly `https://mail.google.com/*`, `https://<your-api-host>/*` and `https://cloudflare-dns.com/*`, with **no `localhost`**. The zip is in `extension\.output\` and its name ends in `-chrome.zip`. Only public URLs go into the extension: never a key, because anyone can unzip it and read it.
+`host_permissions` must be exactly `https://mail.google.com/*`, `https://web.whatsapp.com/*`, `https://<your-api-host>/*` and `https://cloudflare-dns.com/*`, with **no `localhost`**. The zip is `extension\.output\avaran-0.1.0-chrome.zip`. Only public URLs go into the extension: never a key, because anyone can unzip it and read it.
+
+**Publishing it** (GitHub release for judges today, Chrome Web Store in parallel): see `docs/PUBLISH_EXTENSION.md`.
 
 **Judge install steps** (put these on Devpost next to the zip):
 1. Download the zip and **extract it** to a folder. Chrome can't load an unpacked extension from a zip directly.

@@ -15,10 +15,11 @@ const dohOrigin = origin(fileEnv.WXT_DOH_RESOLVER_URL, "https://cloudflare-dns.c
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  zip: { artifactTemplate: "avaran-{{version}}-{{browser}}.zip" },
   vite: () => ({ plugins: [tailwindcss()], envDir: "..", envPrefix: ["WXT_", "VITE_"] }),
   manifest: {
     name: "Avaran",
-    description: "Check who's asking before you click or send. Seal documents with post-quantum encryption.",
+    description: "Privacy layer for your browser: check who's asking, seal documents, hide chats when screen sharing, stop deceptive buttons.",
     permissions: ["storage", "sidePanel", "contextMenus", "scripting", "activeTab"],
     host_permissions: ["https://mail.google.com/*", "https://web.whatsapp.com/*", `${apiOrigin}/*`, `${dohOrigin}/*`],
     optional_host_permissions: ["<all_urls>"],
