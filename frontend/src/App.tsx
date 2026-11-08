@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
-import { Badge, Button, Card, Icon, PqTag, type IconName } from "./components/ui";
+import { HeroCarousel } from "./components/HeroCarousel";
+import { Button, Card, Icon, PqTag, type IconName } from "./components/ui";
 import { api } from "./lib/api";
 import OfficePage from "./pages/Office";
 import RequestPage from "./pages/Request";
@@ -59,29 +60,7 @@ function Home() {
             </span>
           </div>
         </div>
-        <div className="jaali relative hidden aspect-[4/5] max-h-[460px] items-end justify-center overflow-hidden rounded-[28px] border border-line bg-paper-2 lg:flex">
-          <div className="absolute inset-x-10 top-10 bottom-0 rounded-t-full border border-b-0 border-neel-200 bg-card/60" />
-          <div className="absolute inset-x-20 top-24 bottom-0 rounded-t-full border border-b-0 border-geru-200 bg-card/80" />
-          <div className="relative mb-14 w-[62%] rounded-xl border border-line bg-card p-4 shadow-[0_8px_24px_rgba(30,27,23,0.08)]">
-            <div className="flex items-center gap-2 text-[13px] text-ink-3">
-              <Icon name="file" className="h-4 w-4" /> w2-2025.pdf
-            </div>
-            <div className="mt-3 space-y-1.5">
-              <div className="h-2 w-3/4 rounded bg-paper-2" />
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-1/3 rounded bg-paper-2" />
-                <div className="h-2.5 w-1/3 rounded-sm bg-ink" />
-              </div>
-              <div className="h-2 w-2/3 rounded bg-paper-2" />
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <Badge tone="green">
-                <Icon name="check" className="h-3.5 w-3.5" /> Verified office
-              </Badge>
-              <Icon name="lock" className="h-4 w-4 text-neel-600" />
-            </div>
-          </div>
-        </div>
+        <HeroCarousel />
       </section>
 
       <section className="mt-16 border-t border-line pt-12">
