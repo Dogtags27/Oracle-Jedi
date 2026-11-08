@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)][string]$Domain,
-  [Parameter(Mandatory = $true)][string]$OfficeGmail,
+  [string]$OfficeGmail = "",
   [Parameter(Mandatory = $true)][string]$UploadUrl
 )
 
@@ -11,7 +11,7 @@ $OfficeGmail = $OfficeGmail.Trim().ToLower()
 $UploadUrl = $UploadUrl.Trim().TrimEnd('/')
 
 if ($Domain -notmatch '^[a-z0-9-]+(\.[a-z0-9-]+)+$') { throw "Domain looks wrong: $Domain" }
-if ($OfficeGmail -notmatch '^[a-z0-9.+_-]+@gmail\.com$') { throw "OfficeGmail must be a @gmail.com address" }
+if ($OfficeGmail -and $OfficeGmail -notmatch '^[a-z0-9.+_-]+@gmail\.com$') { throw "OfficeGmail must be a @gmail.com address" }
 if ($UploadUrl -notmatch '^https://[^\s|]+$') { throw "UploadUrl must start with https://" }
 
 $src = Join-Path $PSScriptRoot "site"

@@ -120,6 +120,17 @@ function Home() {
             </div>
           ))}
         </div>
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6">
+          <a href="/download/avaran-0.1.0-chrome.zip" download>
+            <Button>Download the Chrome extension</Button>
+          </a>
+          <p className="max-w-xl text-[13.5px] leading-relaxed text-ink-3">
+            Unzip it, open <span className="font-mono text-ink-2">chrome://extensions</span>, turn on Developer mode, choose Load unpacked and pick the unzipped folder. Chrome Web Store listing in review.
+          </p>
+          <a href="/playground/click-guard.html" className="text-[14px] font-medium text-neel-700 hover:underline">
+            Try the Click Guard demo
+          </a>
+        </div>
       </section>
     </Layout>
   );

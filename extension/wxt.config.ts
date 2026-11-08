@@ -16,6 +16,11 @@ const dohOrigin = origin(fileEnv.WXT_DOH_RESOLVER_URL, "https://cloudflare-dns.c
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   zip: { artifactTemplate: "avaran-{{version}}-{{browser}}.zip" },
+  hooks: {
+    "build:manifestGenerated": (_wxt, manifest) => {
+      manifest.host_permissions = (manifest.host_permissions ?? []).filter((host: string) => host !== "<all_urls>");
+    },
+  },
   vite: () => ({ plugins: [tailwindcss()], envDir: "..", envPrefix: ["WXT_", "VITE_"] }),
   manifest: {
     name: "Avaran",
